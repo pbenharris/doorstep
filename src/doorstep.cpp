@@ -5,12 +5,14 @@
 //
 
 // To do list
-// 1. Add a copyright / licensing statement
-// 2. Pull run configuration into a JSON file. Overrides?
-// 3. Add confirmation output for configuration being read correctly?
-// 4. Add log file. Verbosity?
-// 5. Add language statement: C++17?
+// 1. Add a copyright / licensing statement. DONE
+// 2. Pull run configuration into a JSON file. DONE
+// 3. Add confirmation output for configuration being read correctly? DONE
+// 4. Add log file. Verbosity? DONE
+// 5. Add language statement: C++17? SKIPPED.
 // 6. Add list of tools used with versions: cmake, gcc, etc.
+// 7. Add class to look for config file in local then home dirs.
+// 8. Add JSON config of initial distribution.
 
 // C++ standard includes
 #include <iostream>
@@ -29,6 +31,9 @@
 #include <glob.hpp>
 #include <nlohmann/json.hpp>
 #include <spdlog/spdlog.h>
+#include <spdlog/sinks/stdout_color_sinks.h>
+#include <spdlog/sinks/basic_file_sink.h>
+#include <spdlog/sinks/ostream_sink.h>
 
 // DOORSTEP includes
 #include "point_type.hpp" // from ODEINT examples
@@ -244,101 +249,114 @@ const int DOORSTEP_MINOR_VERSION = 1;
 // ------  Main
 int main()
 {
-   spdlog::set_level(spdlog::level::debug);
-   spdlog::info("DOORSTEP version {}.{}",
-                DOORSTEP_MAJOR_VERSION, DOORSTEP_MINOR_VERSION);
+   try {
+      auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
+      console_sink->set_level(spdlog::level::debug);
 
-   filesystem::path homePath = getHome();
-   spdlog::debug("Detected home directory {}", homePath.c_str());
+      auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>("doorstep-log.txt", true);
+      file_sink->set_level(spdlog::level::debug);
+      
+      spdlog::logger logger("multi_sink", {console_sink, file_sink});
+      
+      logger.info("DOORSTEP version {}.{}",
+                   DOORSTEP_MAJOR_VERSION, DOORSTEP_MINOR_VERSION);
 
-   string configFilename("doorstep.json");
-   ifstream configFile(configFilename);
-   if (configFile.fail())
+      filesystem::path homePath = getHome();
+      logger.info("Detected home directory {}", homePath.c_str());
+
+      string configFilename("doorstep.json");
+      ifstream configFile(configFilename);
+      if (configFile.fail())
+      {
+         logger.error("Cannot find a configuration file {}",
+                       configFilename.c_str() );
+         return(EXIT_FAILURE);
+      }
+
+      json data = json::parse(configFile);
+      int nb = data["number_bodies"].template get<int>();
+      logger.info("Number bodies of bodies is {}", nb);
+
+      mass_type masses (nb, 0.);
+      container_type p(nb, 0.), q(nb, 0.);
+
+      //state_type x0(n*4); // 2D, position and velocity --> *4
+
+      // Populate the initial state: mass and position
+      //default_random_engine defEngine(time(0));
+      default_random_engine rEngine;
+      uniform_real_distribution<double> initialDist(0,1);
+      size_t i;
+      for (i=0; i<nb; i++)
+      {
+         masses[i] = 1.0;
+         q[i][0] = initialDist(rEngine);
+         q[i][1] = initialDist(rEngine);
+
+         double x_plus = initialDist(rEngine);
+         double x_minus = initialDist(rEngine);
+         double y_plus =  initialDist(rEngine);
+         double y_minus = initialDist(rEngine);
+
+         double scale = 1./10;
+         p[i][0] = scale*(x_plus - x_minus);
+         p[i][1] = scale*(y_plus - y_minus);
+      }
+
+      point_type qmean = center_of_mass( q , masses );
+      point_type pmean = center_of_mass( p , masses );
+      for( size_t i=0 ; i<nb ; ++i )
+      {
+         q[i] -= qmean ;
+         p[i] -= pmean;
+      }
+
+      for( size_t i=0 ; i<nb ; ++i ) p[i] *= masses[i];
+
+      // Integration parameters
+      double t0 = 0.0;
+      double t1 = 40.0;
+      double dt = 0.1;
+
+      ofstream stateHistFile("state_hist.txt");
+      filesystem::path animationOutputPath = homePath / "animation";
+
+      if (exists(animationOutputPath))
+         cout << "Outputing animation to " << animationOutputPath << endl;
+      else
+      {
+         cerr << "Animation output directory " << animationOutputPath
+              << " does not exist." << endl;
+         exit(1);
+      }
+
+      // Clean up old frames that use the wildcard
+      string frameWildcard = "frame*.png";
+      string frameCspec = "frame%04d.png";
+      string movieFilename = "movie.gif";
+
+      cleanupFrames(animationOutputPath, frameWildcard);
+
+      // Run integrator
+      streaming_observer so(stateHistFile, animationOutputPath, frameCspec);   
+      //integrate_const( runge_kutta4<state_type>(), my_system, x0, t0, t1, dt, so );
+      typedef symplectic_rkn_sb3a_mclachlan< container_type > stepper_type;
+      //typedef runge_kutta4< container_type > stepper_type;
+
+      integrate_const ( stepper_type(),
+                        make_pair(nbody_system_coor(masses),
+                                  nbody_system_momentum(masses) ), // System
+                        make_pair( boost::ref( q ), boost::ref( p ) ), // i.c.
+                        t0, t1, dt, boost::ref(so) );
+
+      generateGIF(animationOutputPath, frameWildcard, movieFilename);
+
+      viewMovie(animationOutputPath, movieFilename);
+   }
+   catch (const spdlog::spdlog_ex &ex)
    {
-      spdlog::error("Cannot find a configuration file {}",
-                    configFilename.c_str() );
-      return(EXIT_FAILURE);
+      std::cout << "Log init failed: " << ex.what() << std::endl;
    }
    
-   json data = json::parse(configFile);
-   int nb = data["number_bodies"].template get<int>();
-   spdlog::debug("Number bodies of bodies is {}", nb);
-
-   mass_type masses (nb, 0.);
-   container_type p(nb, 0.), q(nb, 0.);
-   
-   //state_type x0(n*4); // 2D, position and velocity --> *4
-   
-   // Populate the initial state: mass and position
-   //default_random_engine defEngine(time(0));
-   default_random_engine rEngine;
-   uniform_real_distribution<double> initialDist(0,1);
-   size_t i;
-   for (i=0; i<nb; i++)
-   {
-      masses[i] = 1.0;
-      q[i][0] = initialDist(rEngine);
-      q[i][1] = initialDist(rEngine);
-
-      double x_plus = initialDist(rEngine);
-      double x_minus = initialDist(rEngine);
-      double y_plus =  initialDist(rEngine);
-      double y_minus = initialDist(rEngine);
-
-      double scale = 1./10;
-      p[i][0] = scale*(x_plus - x_minus);
-      p[i][1] = scale*(y_plus - y_minus);
-   }
-   
-   point_type qmean = center_of_mass( q , masses );
-   point_type pmean = center_of_mass( p , masses );
-   for( size_t i=0 ; i<nb ; ++i )
-   {
-      q[i] -= qmean ;
-      p[i] -= pmean;
-   }
-
-   for( size_t i=0 ; i<nb ; ++i ) p[i] *= masses[i];
-   
-   // Integration parameters
-   double t0 = 0.0;
-   double t1 = 40.0;
-   double dt = 0.1;
- 
-   ofstream stateHistFile("state_hist.txt");
-   filesystem::path animationOutputPath = homePath / "animation";
-
-   if (exists(animationOutputPath))
-      cout << "Outputing animation to " << animationOutputPath << endl;
-   else
-   {
-      cerr << "Animation output directory " << animationOutputPath
-           << " does not exist." << endl;
-      exit(1);
-   }
-
-   // Clean up old frames that use the wildcard
-   string frameWildcard = "frame*.png";
-   string frameCspec = "frame%04d.png";
-   string movieFilename = "movie.gif";
-   
-   cleanupFrames(animationOutputPath, frameWildcard);
-
-   // Run integrator
-   streaming_observer so(stateHistFile, animationOutputPath, frameCspec);   
-   //integrate_const( runge_kutta4<state_type>(), my_system, x0, t0, t1, dt, so );
-   typedef symplectic_rkn_sb3a_mclachlan< container_type > stepper_type;
-   //typedef runge_kutta4< container_type > stepper_type;
-   
-   integrate_const ( stepper_type(),
-                     make_pair(nbody_system_coor(masses),
-                               nbody_system_momentum(masses) ), // System
-                     make_pair( boost::ref( q ), boost::ref( p ) ), // i.c.
-                     t0, t1, dt, boost::ref(so) );
-                     
-   generateGIF(animationOutputPath, frameWildcard, movieFilename);
-
-   viewMovie(animationOutputPath, movieFilename);
-
    return(EXIT_SUCCESS);
  }
