@@ -1,0 +1,3 @@
+/home/pben/doorstep/src/build/CMakeFiles/doorstep.dir
+/home/pben/doorstep/src/build/CMakeFiles/edit_cache.dir
+/home/pben/doorstep/src/build/CMakeFiles/rebuild_cache.dir
