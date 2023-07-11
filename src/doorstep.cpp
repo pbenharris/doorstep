@@ -231,7 +231,7 @@ void cleanupFrames(std::filesystem::path workingDir, std::string frameWildcard)
 void viewMovie(std::filesystem::path workingDir, std::string movieFilename)
 {
    std::filesystem::path inputFilespec = workingDir / movieFilename;
-#ifndef _WIN32
+#ifdef _WIN32
    std::string command = "start " + inputFilespec.generic_string(); 
 #else
    std::string command = "eog " + inputFilespec.generic_string(); 

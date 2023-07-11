@@ -8,7 +8,7 @@ find_package(Matplot++ REQUIRED)
 set(Boost_USE_STATIC_LIBS ON) 
 set(Boost_USE_MULTITHREADED ON)  
 set(Boost_USE_STATIC_RUNTIME OFF) 
-find_package(Boost 1.82.0 REQUIRED)
+find_package(Boost 1.74.0 REQUIRED)
 
 add_executable(doorstep doorstep.cpp)
 target_include_directories(doorstep PUBLIC
