@@ -219,7 +219,7 @@ void cleanupFrames(std::filesystem::path workingDir, std::string frameWildcard)
         << inputFilespec << endl;
 
    int allRemoved = 0;
-   for (auto& de : glob::glob(inputFilespec))
+   for (auto& de : glob::glob(inputFilespec.generic_string()))
    {
       int thisRemoved = remove_all(de);
       allRemoved += thisRemoved;
@@ -231,7 +231,12 @@ void cleanupFrames(std::filesystem::path workingDir, std::string frameWildcard)
 void viewMovie(std::filesystem::path workingDir, std::string movieFilename)
 {
    std::filesystem::path inputFilespec = workingDir / movieFilename;
-   std::string command = "eog " + inputFilespec.generic_string();
+#ifndef _WIN32
+   std::string command = "start " + inputFilespec.generic_string(); 
+#else
+   std::string command = "eog " + inputFilespec.generic_string(); 
+#endif
+
    cout << "Spawning view." << endl << flush;
    system(command.c_str());
    return;
