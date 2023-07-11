@@ -3,16 +3,9 @@
 //
 // Ben Harris
 //
-
-// To do list
-// 1. Add a copyright / licensing statement. DONE
-// 2. Pull run configuration into a JSON file. DONE
-// 3. Add confirmation output for configuration being read correctly? DONE
-// 4. Add log file. Verbosity? DONE
-// 5. Add language statement: C++17? SKIPPED.
-// 6. Add list of tools used with versions: cmake, gcc, etc.
-// 7. Add class to look for config file in local then home dirs.
-// 8. Add JSON config of initial distribution.
+// Website: www.darkmatteratourdoostep.com
+// About this code: see the README.md and LICENSE
+// Plans for this code: see TODO.txt
 
 // C++ standard includes
 #include <iostream>
@@ -21,6 +14,8 @@
 #include <random>
 #include <filesystem>
 #include <vector>
+#include <list>
+#include <exception>
 
 // C includes (where possible the C++ standard version)
 #include <cstdlib>
@@ -37,8 +32,6 @@
 
 // DOORSTEP includes
 #include "point_type.hpp" // from ODEINT examples
-
-const double gravitational_constant = 1e-8;
 
 typedef point< double , 3 > point_type;
 typedef std::vector< point_type > container_type;
@@ -67,27 +60,29 @@ struct nbody_system_coor
 // Momentum function
 struct nbody_system_momentum
 {
-    const mass_type &m_masses;
+   const mass_type &m_masses;
+   double gravitational_constant;
 
-    nbody_system_momentum( const mass_type &masses ) : m_masses( masses ) { }
+   nbody_system_momentum( const mass_type &masses, double inputG ) :
+      m_masses( masses ), gravitational_constant (inputG)
+   { }
 
-    void operator()( const container_type &q , container_type &dpdt ) const
-    {
-        const size_t n = q.size();
-        for( size_t i=0 ; i<n ; ++i )
-        {
-            dpdt[i] = 0.0; // Ah, so dpdt is force. So, p is momentum.  
-            for( size_t j=0 ; j<i ; ++j ) // The canonical form doesn't have velocity as a state variable, just positions/coordinates
-            {
-                point_type diff = q[j] - q[i];
-                double d = abs( diff );
-                diff *= ( gravitational_constant * m_masses[i] * m_masses[j] / d / d / d ); // Nice choice to reuse the difference variable for force
-                dpdt[i] += diff;
-                dpdt[j] -= diff;
-
-            }
-        }
-    }
+   void operator()( const container_type &q , container_type &dpdt ) const
+   {
+      const size_t n = q.size();
+      for( size_t i=0 ; i<n ; ++i )
+      {
+         dpdt[i] = 0.0; // Ah, so dpdt is force. So, p is momentum.  
+         for( size_t j=0 ; j<i ; ++j ) // The canonical form doesn't have velocity as a state variable, just positions/coordinates
+         {
+            point_type diff = q[j] - q[i];
+            double d = abs( diff );
+            diff *= ( gravitational_constant * m_masses[i] * m_masses[j] / d / d / d ); // Nice choice to reuse the difference variable for force
+            dpdt[i] += diff;
+            dpdt[j] -= diff;
+         } // inner loop over combinations of points
+      } // outer loop over combinatios of points
+   } // end parenthesis operator
 };
 
 point_type center_of_mass( const container_type &x , const mass_type &m )
@@ -242,6 +237,63 @@ void viewMovie(std::filesystem::path workingDir, std::string movieFilename)
    return;
 }
 
+struct RunConfiguration
+{
+   int numberBodies;
+   double gravitationalConstant;
+};
+
+class ConfigurationFile
+{
+   public:
+      ConfigurationFile(const std::string& configFilename, spdlog::logger& mlogger)
+      {
+         std::list<std::filesystem::path> pathList;
+         pathList.push_back(configFilename);
+         std::filesystem::path home = getHome();
+         mlogger.debug("Configuration has detected home dir at {}",home.generic_string().c_str());
+         pathList.push_back(getHome() / configFilename);
+         pathList.push_back(getHome() / "doorstep" / "src" / configFilename);
+
+         bool foundConfig = false;
+         std:filesystem::path configPathUsing;
+
+         for (auto it = pathList.begin(); it!=pathList.end(); it++)
+         {
+            ifstream testOpen(*it);
+            if (!testOpen.fail())
+            {
+               foundConfig = true;
+               configPathUsing = *it;
+               mlogger.info("Found configuration file {}",(*it).generic_string().c_str());
+            }
+         }
+         
+         if (!foundConfig)
+         {
+            mlogger.error("Cannot find a configuration file {}",
+                         configFilename.c_str() );
+            throw(std::runtime_error("Cannot open configuration file"+
+                                      configFilename));
+         }  
+
+         ifstream configFile(configPathUsing.generic_string());
+         data = nlohmann::json::parse(configFile);     
+         mlogger.info("Read configuration from {}",
+                      configPathUsing.generic_string().c_str());
+      }
+
+      RunConfiguration getRunConfiguration(void) const
+      {
+         RunConfiguration rc;
+         rc.numberBodies = data["number_bodies"].template get<int>();
+         rc.gravitationalConstant = data["gravitational_constant"].template get<int>();
+         return rc;
+      }
+
+private:
+   nlohmann::json data;
+};
 // Version info
 const int DOORSTEP_MAJOR_VERSION = 0;
 const int DOORSTEP_MINOR_VERSION = 1;
@@ -257,37 +309,26 @@ int main()
       file_sink->set_level(spdlog::level::debug);
       
       spdlog::logger logger("multi_sink", {console_sink, file_sink});
+      logger.set_level(spdlog::level::debug);
       
       logger.info("DOORSTEP version {}.{}",
                    DOORSTEP_MAJOR_VERSION, DOORSTEP_MINOR_VERSION);
 
-      filesystem::path homePath = getHome();
-      logger.info("Detected home directory {}", homePath.c_str());
-
-      string configFilename("doorstep.json");
-      ifstream configFile(configFilename);
-      if (configFile.fail())
-      {
-         logger.error("Cannot find a configuration file {}",
-                       configFilename.c_str() );
-         return(EXIT_FAILURE);
-      }
-
-      json data = json::parse(configFile);
-      int nb = data["number_bodies"].template get<int>();
-      logger.info("Number bodies of bodies is {}", nb);
-
-      mass_type masses (nb, 0.);
-      container_type p(nb, 0.), q(nb, 0.);
+      ConfigurationFile cf("doorstep.json", logger);
+      RunConfiguration rc = cf.getRunConfiguration();
+      
+      mass_type masses (rc.numberBodies, 0.);
+      container_type p(rc.numberBodies, 0.), q(rc.numberBodies, 0.);
 
       //state_type x0(n*4); // 2D, position and velocity --> *4
 
+      
       // Populate the initial state: mass and position
       //default_random_engine defEngine(time(0));
       default_random_engine rEngine;
       uniform_real_distribution<double> initialDist(0,1);
       size_t i;
-      for (i=0; i<nb; i++)
+      for (i=0; i<rc.numberBodies; i++)
       {
          masses[i] = 1.0;
          q[i][0] = initialDist(rEngine);
@@ -305,13 +346,13 @@ int main()
 
       point_type qmean = center_of_mass( q , masses );
       point_type pmean = center_of_mass( p , masses );
-      for( size_t i=0 ; i<nb ; ++i )
+      for( size_t i=0 ; i<rc.numberBodies ; ++i )
       {
          q[i] -= qmean ;
          p[i] -= pmean;
       }
 
-      for( size_t i=0 ; i<nb ; ++i ) p[i] *= masses[i];
+      for( size_t i=0 ; i<rc.numberBodies ; ++i ) p[i] *= masses[i];
 
       // Integration parameters
       double t0 = 0.0;
@@ -319,6 +360,7 @@ int main()
       double dt = 0.1;
 
       ofstream stateHistFile("state_hist.txt");
+      filesystem::path homePath = getHome();
       filesystem::path animationOutputPath = homePath / "animation";
 
       if (exists(animationOutputPath))
@@ -343,11 +385,14 @@ int main()
       typedef symplectic_rkn_sb3a_mclachlan< container_type > stepper_type;
       //typedef runge_kutta4< container_type > stepper_type;
 
-      integrate_const ( stepper_type(),
-                        make_pair(nbody_system_coor(masses),
-                                  nbody_system_momentum(masses) ), // System
-                        make_pair( boost::ref( q ), boost::ref( p ) ), // i.c.
-                        t0, t1, dt, boost::ref(so) );
+      integrate_const (
+          stepper_type(),
+          make_pair(nbody_system_coor(masses),
+                    nbody_system_momentum(masses,
+                                          rc.gravitationalConstant) ), // System
+          make_pair( boost::ref( q ), boost::ref( p ) ), // i.c.
+          t0, t1, dt, boost::ref(so)
+          );
 
       generateGIF(animationOutputPath, frameWildcard, movieFilename);
 
@@ -355,7 +400,11 @@ int main()
    }
    catch (const spdlog::spdlog_ex &ex)
    {
-      std::cout << "Log init failed: " << ex.what() << std::endl;
+      cout << "Log init failed: " << ex.what() << endl;
+   }
+   catch (const std::runtime_error& ex)
+   {
+      cout << "Runtime exception: " << ex.what() <<  endl;
    }
    
    return(EXIT_SUCCESS);

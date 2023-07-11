@@ -1,3 +1,4 @@
 {
+    "gravitational_constant" : 1e-8,
     "number_bodies" : 100
 }
