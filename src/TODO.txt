@@ -7,11 +7,13 @@ To do list
 5. Add language statement: C++17? DONE 
 6. Add list of tools used with versions: cmake, gcc, etc. DONE
 7. Add class to look for config file in local then home dirs. DONE
-8. Fix ODE - test against 2BP?
-9. Add JSON config of initial distribution.
+8. Add ability to specify a set of bodies, and/or a distribution of bodies.
+9. Fix/test ODE against 2BP
 10. A class to handle visualization - move current function there.
 11. Add ffmpeg movie creation to class.
 12. Add path to use first order ODEs (e.g., RK4)
 13. Add energy evaluation to show numerical stability.
 14. Make movie viewer configurable
 15. Prompt user to create animation folder, make configurable
+16. Give bodies radius - spherical DE.
+

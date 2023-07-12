@@ -246,6 +246,9 @@ struct RunConfiguration
 {
    int numberBodies;
    double gravitationalConstant;
+   double initialTime;
+   double finalTime;
+   double timeStep;
 };
 
 class ConfigurationFile
@@ -293,6 +296,12 @@ class ConfigurationFile
          RunConfiguration rc;
          rc.numberBodies = data["number_bodies"].template get<int>();
          rc.gravitationalConstant = data["gravitational_constant"].template get<int>();
+         rc.initialTime = data["initial_time"].template get<double>();
+         rc.finalTime = data["final_time"].template get<double>();
+         rc.timeStep = data["time_step"].template get<double>();
+
+         cout << "Read this many bodies: " << data["body"].size() << endl;
+         cout << "Name of first body is: " << data["body"][0]["name"] << endl;
          return rc;
       }
 
@@ -360,9 +369,9 @@ int main()
       for( size_t i=0 ; i<rc.numberBodies ; ++i ) p[i] *= masses[i];
 
       // Integration parameters
-      double t0 = 0.0;
-      double t1 = 40.0;
-      double dt = 0.1;
+      double t0 = rc.initialTime;
+      double t1 = rc.finalTime;
+      double dt = rc.timeStep;
 
       ofstream stateHistFile("state_hist.txt");
       filesystem::path homePath = getHome();

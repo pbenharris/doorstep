@@ -1,4 +1,21 @@
 {
-    "gravitational_constant" : 1e-8,
-    "number_bodies" : 100
+    "gravitational_constant" : 6.6743e-11,
+    "number_bodies" : 2,
+    "initial_time"  : 0.0,
+    "time_step"     : 1.0,
+    "final_time"    : 20.0,
+    "body" : [
+        {
+            "name": "Earth",
+            "mass": 5.972e24,
+            "position": [0.0, 0.0, 0.0],
+            "velocity": [0.0, 0.0, 0.0]
+        },
+        {
+            "name": "GPS",
+            "mass": 2000,
+            "position": [26561.753, 0, 0],
+            "velocity": [0, 3.873827, 0]
+        }
+     ]
 }
