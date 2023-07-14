@@ -151,11 +151,16 @@ struct streaming_observer
          // These get compile errors
          ///   *xc_iter++ = x_iter++;
          //*yc_iter++ = x_iter++;
-         xc[i] = x[i][0];
-         yc[i] = x[i][1];
+         xc[i] = x[i][0]/6378./1000;
+         yc[i] = x[i][1]/6378./1000;
       }
 
-      scatter(xc, yc, 1);
+      scatter(xc, yc, 10);
+
+      axis(matplot::equal);
+      axis({-5, 5, -5, 5});
+      //axis({0, 1, 0 , 1});
+
 
       //auto r1 = rectangle(0,0,1,1);
       //r1->color("red");
@@ -169,12 +174,10 @@ struct streaming_observer
       char fname[60];
       sprintf(fname,framePattern.c_str(),framecount++);
       std::filesystem::path outputFramePath = outputPath / fname;
+  
+      
       save(outputFramePath.generic_string());
-          
-      axis({-5, 5, -5, 5});
-      //axis({0, 1, 0 , 1});
-      //axis(matplot::equal);
-
+      
       // show();
    }
     
@@ -242,6 +245,15 @@ void viewMovie(std::filesystem::path workingDir, std::string movieFilename)
    return;
 }
 
+struct CelestialBody
+{
+   std::vector<double> position;
+   std::vector<double> velocity;
+   double radius;
+   double mass;
+   std::string name;
+};
+
 struct RunConfiguration
 {
    int numberBodies;
@@ -249,6 +261,7 @@ struct RunConfiguration
    double initialTime;
    double finalTime;
    double timeStep;
+   std::vector<CelestialBody> celestialBody;
 };
 
 class ConfigurationFile
@@ -273,7 +286,7 @@ class ConfigurationFile
             {
                foundConfig = true;
                configPathUsing = *it;
-               mlogger.info("Found configuration file {}",(*it).generic_string().c_str());
+               mlogger.debug("Found configuration file {}",(*it).generic_string().c_str());
             }
          }
          
@@ -294,14 +307,33 @@ class ConfigurationFile
       RunConfiguration getRunConfiguration(void) const
       {
          RunConfiguration rc;
-         rc.numberBodies = data["number_bodies"].template get<int>();
-         rc.gravitationalConstant = data["gravitational_constant"].template get<int>();
+         rc.numberBodies = data["number_bodies"];
+         rc.gravitationalConstant = data["gravitational_constant"];
          rc.initialTime = data["initial_time"].template get<double>();
          rc.finalTime = data["final_time"].template get<double>();
          rc.timeStep = data["time_step"].template get<double>();
 
-         cout << "Read this many bodies: " << data["body"].size() << endl;
-         cout << "Name of first body is: " << data["body"][0]["name"] << endl;
+         rc.celestialBody.resize(data["celestial_body"].size());
+         for (auto i=0; i<rc.celestialBody.size();i++) 
+         {
+            nlohmann::json body_data=data["celestial_body"][i];
+            CelestialBody thisBody;
+            thisBody.name = body_data["name"];
+            thisBody.radius = body_data["radius"];
+            thisBody.mass = body_data["mass"];
+            
+            thisBody.position.resize(body_data["initial_position"].size());
+            size_t j;
+            for (j=0; j<thisBody.position.size(); j++)
+               thisBody.position[j]=body_data["initial_position"][j];
+
+            thisBody.velocity.resize(body_data["initial_velocity"].size());
+            for (j=0; j<thisBody.velocity.size(); j++)
+               thisBody.velocity[j]=body_data["initial_velocity"][j];
+
+            rc.celestialBody[i] = thisBody;
+         } 
+         
          return rc;
       }
 
@@ -330,7 +362,7 @@ int main()
 
       ConfigurationFile cf("doorstep.json", logger);
       RunConfiguration rc = cf.getRunConfiguration();
-      
+
       mass_type masses (rc.numberBodies, 0.);
       container_type p(rc.numberBodies, 0.), q(rc.numberBodies, 0.);
 
@@ -344,18 +376,31 @@ int main()
       size_t i;
       for (i=0; i<rc.numberBodies; i++)
       {
-         masses[i] = 1.0;
-         q[i][0] = initialDist(rEngine);
-         q[i][1] = initialDist(rEngine);
+         if (i<rc.celestialBody.size())
+         {
+            masses[i] = rc.celestialBody[i].mass;
+            size_t j;
+            for (j=0;j<3;j++)
+            {
+               q[i][j] = rc.celestialBody[i].position[j];
+               p[i][j] = rc.celestialBody[i].velocity[j];
+            }
+         }
+         else // random distribution
+         {
+            masses[i] = 1.0;
+            q[i][0] = initialDist(rEngine);
+            q[i][1] = initialDist(rEngine);
 
-         double x_plus = initialDist(rEngine);
-         double x_minus = initialDist(rEngine);
-         double y_plus =  initialDist(rEngine);
-         double y_minus = initialDist(rEngine);
+            double x_plus = initialDist(rEngine);
+            double x_minus = initialDist(rEngine);
+            double y_plus =  initialDist(rEngine);
+            double y_minus = initialDist(rEngine);
 
-         double scale = 1./10;
-         p[i][0] = scale*(x_plus - x_minus);
-         p[i][1] = scale*(y_plus - y_minus);
+            double scale = 1./10;
+            p[i][0] = scale*(x_plus - x_minus);
+            p[i][1] = scale*(y_plus - y_minus);
+         }
       }
 
       point_type qmean = center_of_mass( q , masses );
