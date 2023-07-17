@@ -3,7 +3,7 @@
     "number_bodies" : 2,
     "initial_time"  : 0.0,
     "time_step"     : 30.0,
-    "final_time"    : 43082,
+    "final_time"    : 430.82,
     "celestial_body" : [
         {
             "name": "Earth",
@@ -19,5 +19,25 @@
             "initial_position": [26561753, 0, 0],
             "initial_velocity": [0, 3873.827, 0]
         }
-     ]
+    ],
+    "animation" : {
+        "working_directory" : {
+            "auto_relative_to_home" : true,
+            "directory_name" : "animation"
+        },
+        "frames" : [
+            {
+                "type" : "2dplot",
+                "x_index" : 1,
+                "y_index" : 2,
+                "origin"  : [0, 0],
+                "scale_reduction" : 6378145,
+                "x_limits"  : [-6, 6],
+                "y_limits"  : [-6, 6],
+                "base_filename" : "frame",
+                "frame_number_digits" : 4
+           }
+        ],
+        "output_filename" : "movie.gif"
+    }
 }

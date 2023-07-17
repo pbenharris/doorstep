@@ -32,6 +32,9 @@
 
 // DOORSTEP includes
 #include "point_type.hpp" // from ODEINT examples
+#include "CelestialBody.hpp"
+#include "Utils.hpp"
+#include "Animation.hpp"
 
 typedef point< double , 3 > point_type;
 typedef std::vector< point_type > container_type;
@@ -41,6 +44,7 @@ using namespace std;
 using namespace boost::numeric::odeint;
 using namespace matplot;
 using json = nlohmann::json;
+using namespace doorstep;
 
 // Coordinate function
 struct nbody_system_coor
@@ -157,7 +161,7 @@ struct streaming_observer
 
       scatter(xc, yc, 10);
 
-      axis(matplot::equal);
+      //axis(matplot::equal);
       axis({-5, 5, -5, 5});
       //axis({0, 1, 0 , 1});
 
@@ -182,16 +186,6 @@ struct streaming_observer
    }
     
 };
-
-std::filesystem::path getHome(void)
-{
-#ifndef _WIN32
-   return std::filesystem::path(getenv("HOME"));
-#else
-   return std::filesystem::path(getenv("USERPROFILE"));
-#endif
-   return std::filesystem::current_path();
-}
 
 // Read frames from working dir, generates movie there
 // Assumes ImageMagick or similar is installed
@@ -245,14 +239,6 @@ void viewMovie(std::filesystem::path workingDir, std::string movieFilename)
    return;
 }
 
-struct CelestialBody
-{
-   std::vector<double> position;
-   std::vector<double> velocity;
-   double radius;
-   double mass;
-   std::string name;
-};
 
 struct RunConfiguration
 {
@@ -269,12 +255,13 @@ class ConfigurationFile
    public:
       ConfigurationFile(const std::string& configFilename, spdlog::logger& mlogger)
       {
+         // Logic to find the configuration file
+         // First place it is found is used. Which is found is logged.
          std::list<std::filesystem::path> pathList;
-         pathList.push_back(configFilename);
+         pathList.push_back(configFilename); // represents the current working directory
          std::filesystem::path home = getHome();
-         mlogger.debug("Configuration has detected home dir at {}",home.generic_string().c_str());
-         pathList.push_back(getHome() / configFilename);
-         pathList.push_back(getHome() / "doorstep" / "src" / configFilename);
+         pathList.push_back(getHome() / configFilename); // represents home directory
+         pathList.push_back(getHome() / "doorstep" / "src" / configFilename); // development directory off of home
 
          bool foundConfig = false;
          std:filesystem::path configPathUsing;
@@ -340,6 +327,7 @@ class ConfigurationFile
 private:
    nlohmann::json data;
 };
+
 // Version info
 const int DOORSTEP_MAJOR_VERSION = 0;
 const int DOORSTEP_MINOR_VERSION = 1;
