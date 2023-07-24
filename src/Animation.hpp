@@ -1,36 +1,46 @@
 #pragma once
 
 #include <string>
+#include <filesystem>
+#include <exception>
+#include <vector>
 
 namespace doorstep
 {
-   struct Axis
+   struct FrameOutputConfiguration
    {
-      bool applyLimits;
-      double xScale;
-      double yScale;
-      double minX, minY, maxX, maxY;
+      double axis_min, axis_max;
+      double length_scale;
    };
-      
+
+   struct AnimationConfiguration
+   {
+      AnimationConfiguration(): animationOutputPath(".")
+      {
+      }
+
+      void setWorkingDirectory(const std::string& animationWorkingDirName)
+      {
+         std::filesystem::path homePath = getHome();
+         animationOutputPath = homePath / animationWorkingDirName;
+         if (!exists(animationOutputPath))
+            throw std::runtime_error("Animation working directory " +
+                                     animationOutputPath.generic_string() +
+                                     "does not exist.");
+      }
+
+      std::vector<FrameOutputConfiguration> frameOutputConfig;
+      std::filesystem::path animationOutputPath;
+      std::string outputFilename;
+   };
+
    class Animation
    {
       public:
-         Animation(const Axis& inputAxis) :
-            axis(inputAxis)
-         {}
-      
-         void generateNextFrame(const std::vector<double>& x,
-                                const std::vector<double>& y);
+      Animation()
+      {}
                     
       private:
-         int frameNumber;
-         Axis axis;
-         double scale_reduction;
-         std::string baseFilename;         
-         int frameNumberDigits;
-      
-         std::filesystem::path outputDirectory;
-         std::string outputFilename;
-          
+
    };
 }

@@ -1,0 +1,65 @@
+{
+    "gravitational_constant" : 0.0000001,
+    "number_bodies" : 4,
+    "initial_time"  : 0.0,
+    "time_step"     : 1.0,
+    "final_time"    : 20.000,
+    "celestial_body" : [
+        {
+            "name": "Earth",
+            "radius": 0.5,
+            "mass": 1000.0,
+            "initial_position": [0.0, 0.0, 0.0],
+            "initial_velocity": [0.0, 0.0, 0.0]
+        },
+        {
+            "name": "dm",
+            "radius": 0.01,
+            "mass": 0.0001,
+            "initial_position": [-2.0, 0.25, 0.0],
+            "initial_velocity": [0.02, 0.0, 0.0]
+        },
+        {
+            "name": "dm3",
+            "radius": 0.01,
+            "mass": 0.0001,
+            "initial_position": [-2.0, 0.20, 0.0],
+            "initial_velocity": [0.02, 0.0, 0.0]
+        },
+        {
+            "name": "dm2",
+            "radius": 0.01,
+            "mass": 0.0001,
+            "initial_position": [-2.0, 0.15, 0.0],
+            "initial_velocity": [0.02, 0.0, 0.0]
+        }
+    ],
+    "grid" : [
+        {
+            "particle_mass": 0.0001,
+            "n_x" : 10,
+            "n_y" : 1,
+            "n_z" : 1,
+            "distance" : 0.1,
+            "initial_position": [-2.0, 0.15, 0.0],
+            "initial_velocity": [0.02, 0.0, 0.0]        
+        }
+    ],
+    "animation" : {
+        "working_directory" : "animation",
+        "output_filename" : "grid.webp",
+        "frame_outputs" : [
+            {
+                "type" : "2dplot",
+                "x_index" : 1,
+                "y_index" : 2,
+                "origin"  : [0, 0],
+                "length_scale" : 1,
+                "axis_min"  : -2,
+                "axis_max"  : 2,
+                "base_filename" : "frame",
+                "frame_number_digits" : 4
+           }
+        ]
+    }
+}

@@ -2,9 +2,8 @@
     "gravitational_constant" : 6.6743e-11,
     "number_bodies" : 2,
     "initial_time"  : 0.0,
-    "time_step"     : 10.0,
-    "final_time"    : 100.000,
-    "final_time_gps_orbit"    : 43082,
+    "time_step"     : 120,
+    "final_time"    : 21348.5,
     "celestial_body" : [
         {
             "name": "Earth",
@@ -14,29 +13,31 @@
             "initial_velocity": [0.0, 0.0, 0.0]
         },
         {
-            "name": "GPS",
-            "radius": 100000,
-            "mass": 2000,
-            "initial_position": [26561753, 0, 0],
-            "initial_velocity": [0, 1873.827, 0],
-            "initial_velocity_old": [0, 3873.827, 0]
+            "name": "DM",
+            "radius": 200000,
+            "mass": 1e-6,
+            "initial_position": [14378145, 0, 0],
+            "initial_velocity": [0, 5265.22, 0]
         }
     ],
     "animation" : {
-        "working_directory" : "animation",
-        "output_filename" : "gps.webp",        
-        "frame_outputs" : [
+        "working_directory" : {
+            "auto_relative_to_home" : true,
+            "directory_name" : "animation"
+        },
+        "frames" : [
             {
                 "type" : "2dplot",
                 "x_index" : 1,
                 "y_index" : 2,
                 "origin"  : [0, 0],
-                "length_scale" : 6378145,
-                "axis_min"  : -5,
-                "axis_max"  : 5,
+                "scale_reduction" : 6378145,
+                "x_limits"  : [-6, 6],
+                "y_limits"  : [-6, 6],
                 "base_filename" : "frame",
                 "frame_number_digits" : 4
            }
-        ]
+        ],
+        "output_filename" : "movie.gif"
     }
 }
