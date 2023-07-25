@@ -35,6 +35,7 @@
 #include "CelestialBody.hpp"
 #include "Utils.hpp"
 #include "Animation.hpp"
+#include "Configuration.hpp"
 
 typedef point< double , 3 > point_type;
 typedef std::vector< point_type > container_type;
@@ -45,240 +46,6 @@ using namespace boost::numeric::odeint;
 using namespace matplot;
 using json = nlohmann::json;
 using namespace doorstep;
-
-int generateWEBP(std::filesystem::path workingDir,
-                 std::string frameCspec,
-                 std::string outputName)
-{
-   std::string command = "ffmpeg ";
-   
-   std::filesystem::path inputPath = workingDir / frameCspec;
-   std::filesystem::path outputPath = workingDir / outputName;
-
-   command += " -i " + inputPath.generic_string() + " -vcodec libwebp -lossless 1 -loop 0 " + outputPath.generic_string();
-   
-   //Move echo out of this to configuration confirmation?
-   cout << "Reading frames from dir: " << inputPath << endl;
-   cout << "Writing movie to file: " << outputPath << endl;
-   cout << "Command is: " << command << endl;
-   
-   int success=system(command.c_str());
-   
-   cout << "Done." << endl << flush;
-   return success;
-}
-
-int generateAVI(std::filesystem::path workingDir,
-                std::string frameCspec,
-                std::string outputAVIname)
-{
-   std::string command = "ffmpeg ";
-   
-   std::filesystem::path inputPath = workingDir / frameCspec;
-   std::filesystem::path outputPath = workingDir / outputAVIname;
-
-   command += " -i " + inputPath.generic_string() + " -vcodec mpeg4 -b:v 2M " + outputPath.generic_string();
-   
-   //Move echo out of this to configuration confirmation?
-   cout << "Reading frames from dir: " << inputPath << endl;
-   cout << "Writing movie to file: " << outputPath << endl;
-   cout << "Command is: " << command << endl;
-   
-   int success=system(command.c_str());
-   
-   cout << "Done." << endl << flush;
-   return success;
-}
-
-int generateGIF(std::filesystem::path workingDir, std::string framewildcard,
-                std::string outputGIFname)
-{
-   std::string command = "convert ";
-   
-   std::filesystem::path inputPath = workingDir / framewildcard;
-   std::filesystem::path outputPath = workingDir / outputGIFname;
-   command += inputPath.generic_string() + " " + outputPath.generic_string();
-   
-   //Move echo out of this to configuration confirmation?
-   cout << "Reading frames from dir: " << inputPath << endl;
-   cout << "Writing movie to file: " << outputPath << endl;
-   
-   int success=system(command.c_str());
-   
-   cout << "Done." << endl << flush;
-   return success;
-}
-
-
-void viewMovie(std::filesystem::path workingDir, std::string movieFilename)
-{
-   std::filesystem::path inputFilespec = workingDir / movieFilename;
-#ifdef _WIN32
-   std::string command = "start " + inputFilespec.generic_string(); 
-#else
-   string thisExtension = inputFilespec.extension().generic_string();
-
-   std::string command = "eog " + inputFilespec.generic_string();
-
-   int cmp =thisExtension.compare(".avi"); 
-   if (cmp==0)
-      command = "vlc " +  inputFilespec.generic_string();
-
-   cmp = thisExtension.compare(".webp");
-   if (cmp==0)
-      command = "firefox " +  inputFilespec.generic_string();
-#endif
-
-   cout << "Spawning view." << endl << flush;
-   system(command.c_str());
-   return;
-}
-
-struct GridConfiguration
-{
-   double mass;
-   size_t nx, ny, nz;
-   double distance;
-   double ic_x, ic_y, ic_z;
-   double ic_vx, ic_vy, ic_vz;
-};
-
-struct RunConfiguration
-{
-   int numberBodies;
-   double gravitationalConstant;
-   double initialTime;
-   double finalTime;
-   double timeStep;
-   std::vector<CelestialBody> celestialBody;
-   AnimationConfiguration animationConfig;
-   std::vector<GridConfiguration> gridConfig;
-};
-
-class ConfigurationFile
-{
-   public:
-      ConfigurationFile(const std::string& configFilename, spdlog::logger& mlogger)
-      {
-         // Logic to find the configuration file
-         // First place it is found is used. Which is found is logged.
-         std::list<std::filesystem::path> pathList;
-         pathList.push_back(configFilename); // represents the current working directory
-         std::filesystem::path home = getHome();
-         pathList.push_back(getHome() / configFilename); // represents home directory
-         pathList.push_back(getHome() / "doorstep" / "src" / configFilename); // development directory off of home
-
-         bool foundConfig = false;
-         std:filesystem::path configPathUsing;
-
-         for (auto it = pathList.begin(); it!=pathList.end(); it++)
-         {
-            ifstream testOpen(*it);
-            if (!testOpen.fail())
-            {
-               foundConfig = true;
-               configPathUsing = *it;
-               mlogger.debug("Found configuration file {}",(*it).generic_string().c_str());
-            }
-         }
-         
-         if (!foundConfig)
-         {
-            mlogger.error("Cannot find a configuration file {}",
-                         configFilename.c_str() );
-            throw(std::runtime_error("Cannot open configuration file"+
-                                      configFilename));
-         }  
-
-         ifstream configFile(configPathUsing.generic_string());
-         jsonData = nlohmann::json::parse(configFile);     
-         mlogger.info("Read configuration from {}",
-                      configPathUsing.generic_string().c_str());
-      }
-
-      RunConfiguration getRunConfiguration(void) const
-      {
-         RunConfiguration rc;
-
-         // Required configurations defining simulation time frame and G
-         rc.numberBodies = jsonData["number_bodies"];
-         rc.gravitationalConstant = jsonData["gravitational_constant"];
-         rc.initialTime = jsonData["initial_time"].template get<double>();
-         rc.finalTime = jsonData["final_time"].template get<double>();
-         rc.timeStep = jsonData["time_step"].template get<double>();
-
-         // Optional configuration to define celestial bodies
-         if (jsonData.contains("celestial_body"))
-         {
-            rc.celestialBody.resize(jsonData["celestial_body"].size());
-            for (auto i=0; i<rc.celestialBody.size();i++) 
-            {
-               nlohmann::json body_data=jsonData["celestial_body"][i];
-               CelestialBody thisBody;
-               thisBody.name = body_data["name"];
-               thisBody.radius = body_data["radius"];
-               thisBody.mass = body_data["mass"];
-
-               thisBody.position.resize(body_data["initial_position"].size());
-               size_t j;
-               for (j=0; j<thisBody.position.size(); j++)
-                  thisBody.position[j]=body_data["initial_position"][j];
-
-               thisBody.velocity.resize(body_data["initial_velocity"].size());
-               for (j=0; j<thisBody.velocity.size(); j++)
-                  thisBody.velocity[j]=body_data["initial_velocity"][j];
-
-               rc.celestialBody[i] = thisBody;
-            }
-         }
-
-         // Configuration for animation output - option here but not in main()
-         if (jsonData.contains("animation"))
-         {
-            rc.animationConfig.setWorkingDirectory(jsonData["animation"]["working_directory"]);
-            rc.animationConfig.outputFilename = jsonData["animation"]["output_filename"];
-            rc.animationConfig.frameOutputConfig.resize(jsonData["animation"]["frame_outputs"].size());
-
-            for (auto i=0; i<rc.animationConfig.frameOutputConfig.size();i++)
-            {
-               nlohmann::json frameJsonData = jsonData["animation"]["frame_outputs"][i];
-               rc.animationConfig.frameOutputConfig[i].axis_min = frameJsonData["axis_min"];
-               rc.animationConfig.frameOutputConfig[i].axis_max = frameJsonData["axis_max"];
-               rc.animationConfig.frameOutputConfig[i].length_scale = frameJsonData["length_scale"];
-             }
-         }
-
-         // Grid of dm to use for testing
-         if (jsonData.contains("grid"))
-         {
-            rc.gridConfig.resize(jsonData["grid"].size());
-            for (size_t i=0; i<rc.gridConfig.size(); i++)
-            {
-               nlohmann::json gcjo = jsonData["grid"][i];
-               GridConfiguration gc;
-               
-               gc.mass     = gcjo["particle_mass"];
-               gc.nx       = gcjo["n_x"];
-               gc.ny       = gcjo["n_y"];
-               gc.nz       = gcjo["n_z"];
-               gc.distance = gcjo["distance"];
-               gc.ic_x     = gcjo["initial_position"][0];
-               gc.ic_y     = gcjo["initial_position"][1];
-               gc.ic_z     = gcjo["initial_position"][2];
-               gc.ic_vx    = gcjo["initial_velocity"][0];
-               gc.ic_vy    = gcjo["initial_velocity"][1];
-               gc.ic_vz    = gcjo["initial_velocity"][2];
-               
-               rc.gridConfig[i]=gc;
-            }
-         }
-         return rc;
-      }
-
-private:
-   nlohmann::json jsonData;
-};
-
 
 // Coordinate function
 struct nbody_system_coor
@@ -378,119 +145,132 @@ point_type center_of_mass( const container_type &x , const scalar_type &m )
 
 struct streaming_observer
 {
-    std::ostream& m_out;
-    std::filesystem::path outputPath;
-    std::string framePattern;
-    FrameOutputConfiguration frameConfig;
-    size_t numberCB;
-
-    scalar_type &radius; // for graphing. Body radius
-    scalar_type &metric; // for drawing conditions (e.g., inside another body)
-
-    //mutable list<double> t_hist;
-    //mutable list<state_type> x_hist;
+   std::ostream& m_out;
+   // std::filesystem::path outputPath;
+   // std::string framePattern;
+   // FrameOutputConfiguration frameConfig;
+   size_t numberCB;
+   std::vector<int> frameCount;
    
-   streaming_observer( std::ostream &out, std::filesystem::path iOutPath,
-                       FrameOutputConfiguration& ifc, std::string iFramePattern,
+   std::map<std::string, ImageStream> &imageStreamMap;
+
+   scalar_type &radius; // for graphing. Body radius
+   scalar_type &metric; // for drawing conditions (e.g., inside another body)
+
+   //mutable list<double> t_hist;
+   //mutable list<state_type> x_hist;
+
+   // Wind tunnel function
+   bool windtunnel; // Are we reusing points that have wandered outside the sim?
+   double windTunnelExitDist; // A fixed distance in the scale beyond which a dm point is reused.
+   
+     streaming_observer( std::ostream &out,
+                       std::map<std::string,ImageStream> &inputImageStreamMap,
+                       bool inputUseWindtunnel, double inputWindtunnelExit,
+                       //std::filesystem::path iOutPath,
+                       //FrameOutputConfiguration& ifc,
+                       //std::string iFramePattern,
                        scalar_type &iRadius, scalar_type &iMetric,
                        size_t iNumberCelestialBodies) :
-      m_out( out ), outputPath(iOutPath),
-      frameConfig(ifc), framePattern(iFramePattern),
-      radius(iRadius), metric(iMetric), numberCB(iNumberCelestialBodies)
+      m_out( out ), imageStreamMap(inputImageStreamMap), 
+      radius(iRadius), metric(iMetric),
+      numberCB(iNumberCelestialBodies),
+      frameCount(inputImageStreamMap.size(),0),
+      windtunnel(inputUseWindtunnel),
+      windTunnelExitDist(inputWindtunnelExit)      
    {
    }
 
    template< class state_type >
-   void operator()( const state_type &pq , double t ) const
+   void operator()( const state_type &pq , double t )
    {
       container_type &x = pq.first;
-      container_type &v = pq.second;
+      int n_dm = x.size() - numberCB;      
 
+      // Process state output
       m_out << t;
       for( size_t i=0 ; i<x.size() ; ++i ) m_out << "\t" << x[i];
       m_out << "\n";
 
-      // Copy coordinates from state into separate vectors
+      // Map coordinates from state into vectors for plotting
       size_t np = x.size();
       vector<double> xc(np), yc(np);
       auto xc_iter = xc.begin();
       auto yc_iter = yc.begin();
 
-      double length_scale = frameConfig.length_scale;
-
-      matplot::cla();
-      axis(square);
-      axis({frameConfig.axis_min, frameConfig.axis_max,
-            frameConfig.axis_min, frameConfig.axis_max});
-
-      // Draw the celestial bodies.
-      for (size_t i=0;i<numberCB;i++)
+      // Output each stream
+      int streamIndex = 0;
+      for (auto i = imageStreamMap.begin();
+           i != imageStreamMap.end();
+           i++)
       {
-         // These get compile errors
-         ///   *xc_iter++ = x_iter++;
-         //*yc_iter++ = x_iter++;
+         double length_scale = i->second.length_scale;
 
-         // Scaled for doorstep.json.gps
+         matplot::cla();
+         axis(square);
+         axis({i->second.axis_min, i->second.axis_max,
+               i->second.axis_min, i->second.axis_max});
+
+         // Draw the celestial bodies.
+         for (size_t i=0;i<numberCB;i++)
+         {
          
-         xc[i] = x[i][0]/length_scale;
-         yc[i] = x[i][1]/length_scale;
-         double thisRadius = radius[i]/length_scale;
-         auto e=ellipse(xc[i]-thisRadius,
-                        yc[i]-thisRadius,
-                        2*thisRadius,
-                        2*thisRadius);
-         e->fill("green");
-         e->color("green");
-      }
+            xc[i] = x[i][0]/length_scale;
+            yc[i] = x[i][1]/length_scale;
+            double thisRadius = radius[i]/length_scale;
+            auto e=ellipse(xc[i]-thisRadius,
+                           yc[i]-thisRadius,
+                           2*thisRadius,
+                          2*thisRadius);
+            e->fill("green");
+            e->color("green");
+         }
             
-      // Draw the dark matter particles
-      hold(on);
-      size_t n_dm = x.size() - numberCB;
-      vector<double> x_dm(n_dm), y_dm(n_dm);
-      for (size_t i=0; i<n_dm; i++)
-      {
-         x_dm[i] = x[i+numberCB][0] / length_scale;
-         y_dm[i] = x[i+numberCB][1] / length_scale;
-      }
-      scatter(x_dm, y_dm, 2);
-
-      // Kill and redistribute (aka, the wind tunnel)
-      for (size_t i=numberCB; i<(n_dm+numberCB); i++)
-      {
-         double alimit = 4;
-         
-         // Check for distance from origin
-         double distx = abs(x[i][0]/length_scale);
-         double disty = abs(x[i][1]/length_scale);
-         double distz = abs(x[i][2]/length_scale);
-
-         if (distx > alimit) x[i][0]=-x[i][0];
-         if (disty > alimit) x[i][1]=-x[i][1];
-         if (distz > alimit) x[i][2]=-x[i][2];
-         
-      }
-      
-      
-      // Time in title
-      char timelabel[60];
-      sprintf(timelabel,"t=%g",t);
-      title(timelabel);
-
-      // Output metric value in title
-      //char metricLabel[60];
-      //sprintf(metricLabel,"%g",metric[1]);
-      //title(metricLabel);
-
-      static int framecount = 0;
-      char fname[60];
-      sprintf(fname,framePattern.c_str(),framecount++);
-      std::filesystem::path outputFramePath = outputPath / fname;
+         // Draw the dark matter particles
+         hold(on);
+         size_t n_dm = x.size() - numberCB;
+         vector<double> x_dm(n_dm), y_dm(n_dm);
+         for (size_t i=0; i<n_dm; i++)
+         {
+            x_dm[i] = x[i+numberCB][0] / length_scale;
+            y_dm[i] = x[i+numberCB][1] / length_scale;
+         }
+         scatter(x_dm, y_dm, 2);
   
-      
-      save(outputFramePath.generic_string());
-      
-      // show();
-   }
+         // Time in title
+         char timelabel[60];
+         sprintf(timelabel,"t=%g",t);
+         title(timelabel);
+
+         // Output metric value in title
+         //char metricLabel[60];
+         //sprintf(metricLabel,"%g",metric[1]);
+         //title(metricLabel);
+
+         char fname[255];
+         sprintf(fname,i->second.c_filespec.c_str(),frameCount[streamIndex++]++);
+         std::filesystem::path outputFramePath = i->second.imageOutputPath / fname;
+
+         save(outputFramePath.generic_string());
+      }
+
+      // Control function to kill and redistribute, a primitive "wind tunnel"
+      if (windtunnel)
+         for (size_t i=numberCB; i<(n_dm+numberCB); i++)
+         {
+            double alimit = windTunnelExitDist;
+
+            // Check for distance from origin
+            double distx = abs(x[i][0]);
+            double disty = abs(x[i][1]);
+            double distz = abs(x[i][2]);
+
+            if (distx > alimit) x[i][0]=-x[i][0];
+            if (disty > alimit) x[i][1]=-x[i][1];
+            if (distz > alimit) x[i][2]=-x[i][2];
+
+         } // end control function
+   } // end operator()
     
 };
 
@@ -508,7 +288,7 @@ int main(int argc, char* argv[])
       auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>("doorstep-log.txt", true);
       file_sink->set_level(spdlog::level::debug);
       
-      spdlog::logger logger("multi_sink", {console_sink, file_sink});
+      spdlog::logger logger("multi_log", {console_sink, file_sink});
       logger.set_level(spdlog::level::debug);
       
       logger.info("DOORSTEP version {}.{}",
@@ -523,7 +303,6 @@ int main(int argc, char* argv[])
       ConfigurationFile cf(configfileName, logger);
       RunConfiguration rc = cf.getRunConfiguration();
 
-      
       size_t n_body = rc.numberBodies;
       scalar_type mass (n_body, 0.);
       scalar_type radius (n_body, 0.01);
@@ -531,12 +310,25 @@ int main(int argc, char* argv[])
       container_type p(n_body, 0.), q(n_body, 0.);
 
       // Clean up old frames that use the wildcard
-      string frameWildcard = "frame*.png";
-      string frameCspec = "frame%04d.png";
+      //string frameWildcard = "frame*.png";
+      //string frameCspec = "frame%04d.png";
 
       //cleanupFiles(workingDir, outputAVIname);
-      cleanupFiles(rc.animationConfig.animationOutputPath, rc.animationConfig.outputFilename, logger);
-      cleanupFiles(rc.animationConfig.animationOutputPath, frameWildcard, logger);
+      
+      // Clean up output files for animation
+      for (auto it = rc.animationConfig.begin();
+           it != rc.animationConfig.end();
+           it++)
+         cleanupFiles(it->animationOutputPath,
+                      it->outputFilename, logger);
+      
+      // Clean up outputfiles for image streams (plots etc)
+      for (auto it = rc.imageStreamMap.begin();
+           it!=rc.imageStreamMap.end();
+           it++)  
+         cleanupFiles(it->second.imageOutputPath,
+                      it->second.file_wildcard,
+                      logger);
 
       //state_type x0(n*4); // 2D, position and velocity --> *4
 
@@ -609,10 +401,17 @@ int main(int argc, char* argv[])
       */
 
       // Run integrator
-      streaming_observer so(stateHistFile, rc.animationConfig.animationOutputPath,
-                            rc.animationConfig.frameOutputConfig[0],
-                            frameCspec,
-                            radius, metric, rc.celestialBody.size());   
+      
+      streaming_observer so(stateHistFile,
+                            rc.imageStreamMap,
+                            rc.useWindTunnel,
+                            rc.windTunnelExit,
+                            //rc.animationConfig.animationOutputPath,
+                            //rc.animationConfig.frameOutputConfig[0],
+                            //animation.getFrameCspec(),
+                            radius, metric,
+                            rc.celestialBody.size());
+      
       //integrate_const( runge_kutta4<state_type>(), my_system, x0, t0, t1, dt, so );
       typedef symplectic_rkn_sb3a_mclachlan< container_type > stepper_type;
       //typedef runge_kutta4< container_type > stepper_type;
@@ -628,11 +427,24 @@ int main(int argc, char* argv[])
           t0, t1, dt, boost::ref(so)
           );
 
-      //generateGIF(animationOutputPath, frameWildcard, string("test.gif"));
-      //generateAVI(animationOutputPath, frameCspec, animationFilename);
-      generateWEBP(rc.animationConfig.animationOutputPath, frameCspec,
-                   rc.animationConfig.outputFilename);
-      viewMovie(rc.animationConfig.animationOutputPath, rc.animationConfig.outputFilename);
+      for (auto i=0; i<rc.animationConfig.size(); i++)
+      {
+         // Don't trust the stream is correct - check for input error
+         auto iter = rc.imageStreamMap.find(rc.animationConfig[i].imageStreamName);
+         if (iter==rc.imageStreamMap.end())
+         {
+            logger.error("Animation input stream {} not matched.",
+                         rc.animationConfig[i].imageStreamName.c_str());
+            throw std::runtime_error("Cannot locate animation input stream " +
+                                     rc.animationConfig[i].imageStreamName);
+         }
+         Animation animation(rc.animationConfig[i],
+                             iter->second);
+         logger.info("Animation output format {}",animation.getFormatDescription().c_str());
+         animation.generate();
+         if (animation.openViewer)
+            animation.show();
+      }
    }
    catch (const spdlog::spdlog_ex &ex)
    {

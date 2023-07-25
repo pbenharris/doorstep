@@ -4,6 +4,7 @@
     "initial_time"  : 0.0,
     "time_step"     : 1.0,
     "final_time"    : 20.000,
+    "wind_tunnel_exit" : 4,
     "celestial_body" : [
         {
             "name": "Earth",
@@ -45,21 +46,27 @@
             "initial_velocity": [0.02, 0.0, 0.0]        
         }
     ],
-    "animation" : {
-        "working_directory" : "animation",
-        "output_filename" : "grid.webp",
-        "frame_outputs" : [
-            {
-                "type" : "2dplot",
-                "x_index" : 1,
-                "y_index" : 2,
-                "origin"  : [0, 0],
-                "length_scale" : 1,
-                "axis_min"  : -2,
-                "axis_max"  : 2,
-                "base_filename" : "frame",
-                "frame_number_digits" : 4
-           }
-        ]
-    }
+    "image_stream" : [
+        {
+            "name" : "xyplot",
+            "type" : "2dplot",
+            "x_index" : 1,
+            "y_index" : 2,
+            "origin"  : [0, 0],
+            "length_scale" : 1,
+            "axis_min"  : -2,
+            "axis_max"  : 2,
+            "working_directory" : "animation",
+            "c_filespec" : "frame%04d.png",
+            "file_wildcard" : "frame*.png"
+        }
+    ],
+    "animation" : [
+        {
+            "working_directory" : "animation",
+            "output_filename" : "grid.webp",
+            "image_stream" : "xyplot",
+            "open_in_viewer" : true
+        }
+    ]
 }

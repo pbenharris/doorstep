@@ -5,42 +5,157 @@
 #include <exception>
 #include <vector>
 
+#include "Utils.hpp"
+#include "Configuration.hpp"
+
 namespace doorstep
 {
-   struct FrameOutputConfiguration
-   {
-      double axis_min, axis_max;
-      double length_scale;
-   };
-
-   struct AnimationConfiguration
-   {
-      AnimationConfiguration(): animationOutputPath(".")
-      {
-      }
-
-      void setWorkingDirectory(const std::string& animationWorkingDirName)
-      {
-         std::filesystem::path homePath = getHome();
-         animationOutputPath = homePath / animationWorkingDirName;
-         if (!exists(animationOutputPath))
-            throw std::runtime_error("Animation working directory " +
-                                     animationOutputPath.generic_string() +
-                                     "does not exist.");
-      }
-
-      std::vector<FrameOutputConfiguration> frameOutputConfig;
-      std::filesystem::path animationOutputPath;
-      std::string outputFilename;
-   };
-
    class Animation
    {
       public:
-      Animation()
-      {}
-                    
-      private:
 
+         enum Format
+         {
+            GIF,
+            AVIMPG4,
+            WEBP,
+            UNSPECIFIED
+         };
+
+         Animation(void) : animationOutputPath("."),
+                           format(Animation::Format::UNSPECIFIED),
+                           openViewer(false)
+         {}
+
+         Animation(const AnimationConfiguration& acfg,
+                   const ImageStream& is)
+         {
+            configure(acfg, is);
+         }
+
+         void configure(const AnimationConfiguration& acfg,
+                        const ImageStream& is)
+         {
+            animationOutputPath = acfg.animationOutputPath;
+            outputFilename = acfg.outputFilename;
+            openViewer = acfg.openViewer;
+
+            std::filesystem::path outputfn = animationOutputPath / outputFilename;
+            std::string thisExtension = outputfn.extension().generic_string();
+
+            tolower(thisExtension);
+
+            if (thisExtension.compare(".gif")==0)
+               format = Animation::Format::GIF;
+            else if (thisExtension.compare(".avi")==0)
+               format = Animation::Format::AVIMPG4;
+            else if (thisExtension.compare(".webp")==0)
+               format = Animation::Format::WEBP;
+            else
+               format = Animation::Format::UNSPECIFIED;
+
+            // Set frame output C specified (for output and input to ffmpet)
+            // and wildcard (for globbing)
+            frameCspec = is.c_filespec;
+            frameWildcard = is.file_wildcard;
+            frameInputDir = is.imageOutputPath;
+
+         }
+
+         std::string getFormatDescription(void)
+         {
+            std::string desc;
+
+            switch (format)
+            {
+               case GIF :
+                  desc = "Animated GIF";
+                  break;
+
+               case AVIMPG4 :
+                  desc = "AVI file, MPEG-4 encoding";
+                  break;
+
+               case WEBP :
+                  desc = "Lossless WEBP animation";
+                  break;
+
+               default :
+                  desc = "Unspecified";
+            }
+
+            return desc;
+         }
+
+         int generate(void)
+         {
+            if (format == Format::UNSPECIFIED)
+               throw std::runtime_error("Cannot generate animation, format unspecified");
+
+            std::string command;
+            std::filesystem::path inputPath = frameInputDir / frameCspec;
+            std::filesystem::path outputPath = animationOutputPath / outputFilename;
+
+            if (format == Format::WEBP)
+            {
+               command = "ffmpeg -i " + inputPath.generic_string() +
+                         " -vcodec libwebp -lossless 1 -loop 0 " +
+                         outputPath.generic_string();
+            }
+
+            if (format == Format::AVIMPG4)
+            {
+               command = "ffmpeg -i " + inputPath.generic_string() +
+                         " -vcodec mpeg4 -b:v 2M " + outputPath.generic_string();
+            }
+
+            if (format == Format::GIF)
+            {
+               inputPath = frameInputDir / frameWildcard;
+               command = "convert " + inputPath.generic_string() +
+                         " " + outputPath.generic_string();
+            }
+            
+            return system(command.c_str());
+         }
+
+
+        int show(void)
+        {
+           std::filesystem::path animationPath = animationOutputPath / outputFilename;
+
+           std::string command;
+
+           if (format == Format::GIF)
+           {
+         #ifdef _WIN32
+              command = "start " + animationPath.generic_string();
+            system(command.c_str());            
+         #else
+            std::string command = "eog " + animationPath.generic_string(); // Eye of Gnome
+         #endif
+           }
+ 
+            if (format == Format::AVIMPG4)
+               command = "vlc " + animationPath.generic_string();
+
+            if (format == Format::WEBP)
+               command = "firefox " + animationPath.generic_string();
+       
+            return system(command.c_str());
+          
+        } // end show() function
+           
+      bool openViewer;
+      
+      private:
+         std::filesystem::path animationOutputPath;
+         std::string outputFilename;
+
+         std::string frameCspec;
+         std::string frameWildcard;
+         std::filesystem::path frameInputDir;
+      
+         Animation::Format format;
    };
 }

@@ -1,9 +1,15 @@
 #pragma once
 
 #include <filesystem>
+#include <algorithm>
 
 namespace doorstep
 {
+   // Convert to lower case. Dear C++: why am I coding this?
+   void tolower(std::string& s)
+   {
+      transform(s.begin(), s.end(), s.begin(), ::tolower);
+   }
    
    std::filesystem::path getHome(void)
    {
