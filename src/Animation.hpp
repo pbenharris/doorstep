@@ -126,24 +126,24 @@ namespace doorstep
 
            std::string command;
 
-           if (format == Format::GIF)
-           {
-         #ifdef _WIN32
+           #ifdef _WIN32
               command = "start " + animationPath.generic_string();
-            system(command.c_str());            
-         #else
-            std::string command = "eog " + animationPath.generic_string(); // Eye of Gnome
-         #endif
-           }
- 
-            if (format == Format::AVIMPG4)
-               command = "vlc " + animationPath.generic_string();
+              return system(command.c_str());
+           #else
+	      if (format == Format::GIF)
+	      {
+	       std::string command = "eog " + animationPath.generic_string(); // Eye of Gnome
 
-            if (format == Format::WEBP)
-               command = "firefox " + animationPath.generic_string();
-       
-            return system(command.c_str());
-          
+	      }
+
+	       if (format == Format::AVIMPG4)
+		  command = "vlc " + animationPath.generic_string();
+
+	       if (format == Format::WEBP)
+		  command = "firefox " + animationPath.generic_string();
+
+	       return system(command.c_str());
+	    #endif          
         } // end show() function
            
       bool openViewer;

@@ -16,6 +16,7 @@
 #include <vector>
 #include <list>
 #include <exception>
+#include <string>
 
 // C includes (where possible the C++ standard version)
 #include <cstdlib>
