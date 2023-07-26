@@ -1,29 +1,30 @@
 To do list
 
-1. Add a copyright / licensing statement. DONE
-2. Pull run configuration into a JSON file. DONE
-3. Add confirmation output for configuration being read correctly? DONE
-4. Add log file. Verbosity? DONE
-5. Add language statement: C++17? DONE 
-6. Add list of tools used with versions: cmake, gcc, etc. DONE
-7. Add class to look for config file in local then home dirs. DONE
-8. Add ability to specify a set of bodies. DONE
-9. Fix/test ODE against 2BP. DONE
-10. Add, test force inside a sphere to 2bp force.
-11. Make "orbit plot" configurable from json: limit, scaling.
-12. Define range of random initial position, vel for DM.
-13. Define fixed grid for DM IC.
-14. Add density plot as option in frame generation.
-15. Add ffmpeg movie creation.
-16. Add path to use first order ODEs (e.g., RK4)
-17. Add energy evaluation to show numerical stability.
-18. Make movie viewer configurable
-19. Prompt user to create animation folder, make configurable
-20. Give bodies radius - spherical DE.
-21. Make plots square.
-22. Multiple frame outputs per run.
-23. Compose frmes into one animation. 
-24. Make animator frames follow a body.
-25. Make animator frames orient to a axis (eg 3BP frame). [use a second body]
-26. Have Animator sort out axes from input vector of point_types using indexes (eg can do y vs z)
-27. Add tolower function (hello why do I need to do this) to handle checking movie file output type?
+DONE
+ - Add a copyright / licensing statement.
+ - Pull run configuration into a JSON file.
+ - Add confirmation output for configuration being read correctly?
+ - Add log file. Verbosity?
+ - Add language statement: C++17? 
+ - Add list of tools used with versions: cmake, gcc, etc.
+ - Add class to look for config file in local then home dirs.
+ - Add ability to specify a set of bodies.
+ - Fix/test ODE against 2BP.
+ - Add, test force inside a sphere to 2bp force.
+ - Make "orbit plot" configurable from json: limit, scaling.
+ - Add ffmpeg movie creation
+ - Multiple frame outputs per run - configurable
+ - Made plots square
+ - Add "tolower" function on strings for file handling on Windows
+
+TO DO
+ - Define range of random initial position, vel for DM.
+ - Define fixed grid for DM IC.
+ - Add density plot as option in frame generation.
+ - Add path to use first order ODEs (e.g., RK4)
+ - Add energy evaluation to show numerical stability.
+ - Make movie viewer configurable
+ - Compose frmes into one animation. 
+ - Make animator frames follow a body.
+ - Make animator frames orient to a axis (eg 3BP frame). [use a second body]
+ - Have Animator sort out axes from input vector of point_types using indexes (eg can do y vs z)
