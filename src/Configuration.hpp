@@ -23,6 +23,11 @@ namespace doorstep {
       double ic_x, ic_y, ic_z;
       double ic_vx, ic_vy, ic_vz;
    };
+
+   struct RandomConfiguration
+   {
+      size_t number_bodies;
+   };
    
    struct ImageStream
    {
@@ -75,6 +80,7 @@ namespace doorstep {
       double windTunnelExit;
       std::vector<CelestialBody> celestialBody;
       std::vector<GridConfiguration> gridConfig;
+      std::vector<RandomConfiguration> randomConfig;
       std::map<std::string, ImageStream> imageStreamMap;
       std::vector<AnimationConfiguration> animationConfig;
    };

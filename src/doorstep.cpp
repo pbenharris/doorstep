@@ -37,6 +37,7 @@
 #include "Utils.hpp"
 #include "Animation.hpp"
 #include "Configuration.hpp"
+#include "BodyDistribution.hpp"
 
 typedef point< double , 3 > point_type;
 typedef std::vector< point_type > container_type;
@@ -304,19 +305,15 @@ int main(int argc, char* argv[])
       ConfigurationFile cf(configfileName, logger);
       RunConfiguration rc = cf.getRunConfiguration();
 
+      BodyDistribution bc(rc, logger);
+
       size_t n_body = rc.numberBodies;
       scalar_type mass (n_body, 0.);
       scalar_type radius (n_body, 0.01);
       scalar_type metric (n_body, 0.);
       container_type p(n_body, 0.), q(n_body, 0.);
-
-      // Clean up old frames that use the wildcard
-      //string frameWildcard = "frame*.png";
-      //string frameCspec = "frame%04d.png";
-
-      //cleanupFiles(workingDir, outputAVIname);
       
-      // Clean up output files for animation
+      // Clean up output files for animations
       for (auto it = rc.animationConfig.begin();
            it != rc.animationConfig.end();
            it++)
