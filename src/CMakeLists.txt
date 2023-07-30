@@ -1,9 +1,11 @@
 # To build with debug
 # cmake -DCMAKE_BUILD_TYPE=Debug .. -B .
 cmake_minimum_required(VERSION 3.22)
-project(Simple)
+project(doorstep)
 
 find_package(Matplot++ REQUIRED)
+
+set(CMAKE_BUILD_TYPE Debug)
 
 set(Boost_USE_STATIC_LIBS ON) 
 set(Boost_USE_MULTITHREADED ON)  

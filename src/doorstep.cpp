@@ -32,16 +32,12 @@
 #include <spdlog/sinks/ostream_sink.h>
 
 // DOORSTEP includes
-#include "point_type.hpp" // from ODEINT examples
+#include "System.hpp"
 #include "CelestialBody.hpp"
 #include "Utils.hpp"
 #include "Animation.hpp"
 #include "Configuration.hpp"
 #include "BodyDistribution.hpp"
-
-typedef point< double , 3 > point_type;
-typedef std::vector< point_type > container_type;
-typedef std::vector< double > scalar_type;
 
 using namespace std;
 using namespace boost::numeric::odeint;
@@ -305,14 +301,17 @@ int main(int argc, char* argv[])
       ConfigurationFile cf(configfileName, logger);
       RunConfiguration rc = cf.getRunConfiguration();
 
-      BodyDistribution bc(rc, logger);
+      BodyDistribution bd(rc, logger);
 
-      size_t n_body = rc.numberBodies;
-      scalar_type mass (n_body, 0.);
+      scalar_type mass = bd.getMass();
+      
+      size_t n_body = bd.bodyCount();
+      //scalar_type mass (n_body, 0.);
       scalar_type radius (n_body, 0.01);
       scalar_type metric (n_body, 0.);
       container_type p(n_body, 0.), q(n_body, 0.);
-      
+
+      logger.info("Simulation configured for {} bodies", n_body);
       // Clean up output files for animations
       for (auto it = rc.animationConfig.begin();
            it != rc.animationConfig.end();
@@ -446,11 +445,19 @@ int main(int argc, char* argv[])
    }
    catch (const spdlog::spdlog_ex &ex)
    {
-      cout << "Log init failed: " << ex.what() << endl;
+      cerr << "Log init failed:" << ex.what() << endl;
    }
    catch (const std::runtime_error& ex)
    {
       cout << "Runtime exception: " << ex.what() <<  endl;
+   }
+   catch (const std::exception& ex)
+   {
+      cout << "Standard exception: " << ex.what() <<  endl;
+   }
+   catch(...)
+   {
+      cout << "Caught an unexpected error." << endl;
    }
    
    return(EXIT_SUCCESS);

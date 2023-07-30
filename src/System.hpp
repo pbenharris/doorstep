@@ -1,25 +1,9 @@
-/* Boost libs/numeric/odeint/examples/point_type.hpp
+#pragma once
 
- Copyright 2010-2012 Karsten Ahnert
- Copyright 2011 Mario Mulansky
-
- solar system example for Hamiltonian stepper
-
- Distributed under the Boost Software License, Version 1.0.
-(See accompanying file LICENSE_1_0.txt or
- copy at http://www.boost.org/LICENSE_1_0.txt)
- */
-
-#ifndef POINT_TYPE_HPP_INCLUDED
-#define POINT_TYPE_HPP_INCLUDED
-
-
+#include <vector>
 #include <boost/operators.hpp>
 #include <ostream>
 
-
-//[ point_type
-/*the point type */
 template< class T , size_t Dim >
 class point :
     boost::additive1< point< T , Dim > ,
@@ -135,8 +119,6 @@ class point :
         return tmp;
     }
 
-
-
     //
     // norm
     //
@@ -146,9 +128,6 @@ class point :
         return scalar_prod( p1 , p1 );
     }
 
-
-
-
     //
     // absolute value
     //
@@ -157,9 +136,6 @@ class point :
     {
         return sqrt( norm( p1 ) );
     }
-
-
-
 
     //
     // output operator
@@ -172,6 +148,6 @@ class point :
         return out;
     }
 
-
-
-#endif //POINT_TYPE_HPP_INCLUDED
+typedef point< double , 3 > point_type;
+typedef std::vector< point_type > container_type;
+typedef std::vector< double > scalar_type;

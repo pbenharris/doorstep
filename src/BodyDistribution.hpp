@@ -2,6 +2,8 @@
 
 #include <spdlog/spdlog.h>
 
+#include "System.hpp"
+
 namespace doorstep
 {
    class BodyDistribution {
@@ -24,20 +26,36 @@ namespace doorstep
               it!=rc.gridConfig.end();
               it++)
          {
-            gridSize = it->nx * it->ny * it->nz;
+            size_t gridSize = it->nx * it->ny * it->nz;
             numberBodies += gridSize;
          }
 
-         // Next use private functions to set up distributions in p, q
-         
+         // Next set up distributions for p, q
+         mass = scalar_type(numberBodies, 0.0);
+         radius = scalar_type(numberBodies, 0.0);
+         metric = scalar_type(numberBodies, 0.0);
+         p = container_type(numberBodies, 0.0);
+         q = container_type(numberBodies, 0.0);
       }
 
-      size_t getNumberBodies(void) const
+      size_t bodyCount(void) const
       {
          return numberBodies;
       }
-      
+
+      scalar_type getMass(void) const
+      {
+         return mass;
+      }
+
    private:
+
+      scalar_type mass;
+      scalar_type radius;
+      scalar_type metric;
+
+      container_type p;
+      container_type q;
       
       spdlog::logger& logger;
       size_t numberBodies;

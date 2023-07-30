@@ -71,7 +71,6 @@ namespace doorstep {
 
    struct RunConfiguration
    {
-      int numberBodies;
       double gravitationalConstant;
       double initialTime;
       double finalTime;
@@ -132,7 +131,6 @@ namespace doorstep {
             RunConfiguration rc;
 
             // Required configurations defining simulation time frame and G
-            rc.numberBodies = jsonData["number_bodies"];
             rc.gravitationalConstant = jsonData["gravitational_constant"];
             rc.initialTime = jsonData["initial_time"].template get<double>();
             rc.finalTime = jsonData["final_time"].template get<double>();
@@ -207,6 +205,18 @@ namespace doorstep {
                }
             } // end check for image streams
 
+            // Random distributions of dark matter
+            if (jsonData.contains("random"))
+            {
+               rc.randomConfig.resize(jsonData["random"].size());
+               for (size_t i=0; i< rc.randomConfig.size(); i++)
+               {
+                  RandomConfiguration ranC;
+                  ranC.number_bodies = jsonData["random"][i]["number_bodies"];
+
+                  rc.randomConfig[i] = ranC;
+               }
+            }
             // Use a grid to specify initial conditions
             if (jsonData.contains("grid"))
             {
