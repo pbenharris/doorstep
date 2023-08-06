@@ -77,7 +77,7 @@ struct nbody_system_momentum
       gravitational_constant (inputG)
    { }
 
-   void operator()( const container_type &q , container_type &dpdt )
+   void simple(const container_type &q , container_type &dpdt )
    {
       const size_t n = q.size();
       for( size_t i=0 ; i<n ; ++i )
@@ -112,7 +112,12 @@ struct nbody_system_momentum
             dpdt[j] -= diff;
          } // inner loop over combinations of points
       } // outer loop over combinatios of points
-   } // end parenthesis operator
+   } // End simple function to loop through all points
+
+   void operator()(const container_type &q , container_type &dpdt )
+   {
+      simple(q,dpdt);
+   } // end operator()
 };
 
 
@@ -229,7 +234,7 @@ struct streaming_observer
   
          // Time in title
          char timelabel[60];
-         sprintf(timelabel,"t=%g",t);
+         sprintf(timelabel,"t=%.2lf",t);
          title(timelabel);
 
          // Output metric value in title
@@ -326,55 +331,6 @@ int main(int argc, char* argv[])
 
       //state_type x0(n*4); // 2D, position and velocity --> *4
 
-      
-      // Populate the initial state: mass and position
-      //default_random_engine defEngine(time(0));
-      /*
-      default_random_engine rEngine;
-      uniform_real_distribution<double> initialDist(-4,4);
-      size_t i;
-      for (i=0; i<n_body; i++)
-      {
-         if (i<rc.celestialBody.size())
-         {
-            mass[i] = rc.celestialBody[i].mass;
-            radius[i] = rc.celestialBody[i].radius;
-            size_t j;
-            for (j=0;j<3;j++)
-            {
-               q[i][j] = rc.celestialBody[i].position[j];
-               p[i][j] = rc.celestialBody[i].velocity[j];
-            }
-         }
-         else // random distribution
-         {
-            mass[i] = 1e-9;
-            radius[i] = 0.01;
-            q[i][0] = initialDist(rEngine);
-            q[i][1] = initialDist(rEngine);
-
-            double x_plus = initialDist(rEngine);
-            double x_minus = initialDist(rEngine);
-            double y_plus =  initialDist(rEngine);
-            double y_minus = initialDist(rEngine);
-
-            double scale = 1./100;
-            p[i][0] = scale*(x_plus - x_minus);
-            p[i][1] = scale*(y_plus - y_minus);
-
-         }
-      }
-
-      point_type qmean = center_of_mass( q , mass );
-      point_type pmean = center_of_mass( p , mass );
-      for( size_t i=0 ; i<n_body ; ++i )
-      {
-         q[i] -= qmean ;
-         p[i] -= pmean;
-      }
-
-      for( size_t i=0 ; i<n_body ; ++i ) p[i] *= mass[i];
-      */
       // Integration parameters
       double t0 = rc.initialTime;
       double t1 = rc.finalTime;
@@ -382,22 +338,7 @@ int main(int argc, char* argv[])
 
       ofstream stateHistFile("state_hist.txt");
 
-      /*
-      filesystem::path homePath = getHome();
-      filesystem::path animationOutputPath = homePath / "animation";
-
-      if (exists(animationOutputPath))
-         cout << "Outputing animation to " << animationOutputPath << endl;
-      else
-      {
-         cerr << "Animation output directory " << animationOutputPath
-              << " does not exist." << endl;
-         exit(1);
-      }
-      */
-
-      // Run integrator
-      
+      // Run integrator      
       streaming_observer so(stateHistFile,
                             rc.imageStreamMap,
                             rc.useWindTunnel,

@@ -1,8 +1,8 @@
 {
     "gravitational_constant" : 0.0000001,
     "initial_time"  : 0.0,
-    "time_step"     : 1.0,
-    "final_time"    : 5.000,
+    "time_step"     : 0.5,
+    "final_time"    : 800.000,
     "wind_tunnel_exit" : 4,
     "celestial_body" : [
         {
@@ -11,27 +11,6 @@
             "mass": 1000.0,
             "initial_position": [0.0, 0.0, 0.0],
             "initial_velocity": [0.0, 0.0, 0.0]
-        },
-        {
-            "name": "dm",
-            "radius": 0.01,
-            "mass": 0.0001,
-            "initial_position": [-2.0, 0.25, 0.0],
-            "initial_velocity": [0.02, 0.0, 0.0]
-        },
-        {
-            "name": "dm3",
-            "radius": 0.01,
-            "mass": 0.0001,
-            "initial_position": [-2.0, 0.20, 0.0],
-            "initial_velocity": [0.02, 0.0, 0.0]
-        },
-        {
-            "name": "dm2",
-            "radius": 0.01,
-            "mass": 0.0001,
-            "initial_position": [-2.0, 0.15, 0.0],
-            "initial_velocity": [0.02, 0.0, 0.0]
         }
     ],
     "uniform_2d_xy" : [
@@ -50,12 +29,12 @@
      ],
     "grid" : [
         {
-            "particle_mass": 1e-8,
-            "n_x" : 2,
-            "n_y" : 1,
+            "particle_mass": 1e-5,
+            "n_x" : 400,
+            "n_y" : 20,
             "n_z" : 1,
             "distance" : 0.1,
-            "initial_position": [-2.0, 0.15, 0.0],
+            "initial_position": [-21.5, 0.0, 0.0],
             "initial_velocity": [0.02, 0.0, 0.0]        
         }
     ],

@@ -45,8 +45,10 @@ namespace doorstep
          q = container_type(numberBodies, 0.0);
 
          // Set positions and velocities - set q to positions, q to velocities (for now)
+         // Note there's a different call for each class of bodies
          size_t lastIdx = setCelestialBodies(rc, 0);
-         lastIdx = setRandomCloud(rc, lastIdx);
+         lastIdx = setRandomClouds(rc, lastIdx);
+         lastIdx = setGrids(rc, lastIdx);
 
          // Set the mean q and p to zero
          point_type pmean = center_of_mass(p, mass);
@@ -112,7 +114,7 @@ namespace doorstep
       // Set up each random configuration
       // Returns an index into the p and q vectors at the end of what was written
       // Note only 2D, uniform distribution is implemented
-      size_t setRandomCloud(const RunConfiguration& rc, size_t idx)
+      size_t setRandomClouds(const RunConfiguration& rc, size_t idx)
       {
          const double pi = std::acos(-1.);
 
@@ -150,6 +152,41 @@ namespace doorstep
             }
          }
 
+         return idx;
+      }
+
+      size_t setGrids(const RunConfiguration& rc, size_t idx)
+      {
+         for (auto cfg = rc.gridConfig.begin();
+              cfg != rc.gridConfig.end();
+              cfg++)
+         {
+            // Assume initial position is at the center of mass of the grid
+            double d=cfg->distance;
+            double minx = cfg->ic_x - 0.5*d*(cfg->nx - 1);
+            double miny = cfg->ic_y - 0.5*d*(cfg->ny - 1);
+            double minz = cfg->ic_z - 0.5*d*(cfg->nz - 1);
+
+            for (int ix=0; ix!=cfg->nx; ix++)
+               for (int iy=0; iy!=cfg->ny; iy++)
+                  for (int iz=0; iz!=cfg->nz; iz++, idx++)
+                  {
+                     mass[idx] = cfg->mass;
+                     
+                     point_type pos;
+                     pos[0] = minx + d*ix;
+                     pos[1] = miny + d*iy;
+                     pos[2] = minz + d*iz;
+                     q[idx]=pos;
+                     
+                     point_type vel;
+                     vel[0] = cfg->ic_vx;
+                     vel[1] = cfg->ic_vy;
+                     vel[2] = cfg->ic_vz;
+                     p[idx] = vel;
+                  } 
+         }        
+         
          return idx;
       }
 

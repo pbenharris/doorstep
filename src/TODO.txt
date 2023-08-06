@@ -16,15 +16,20 @@ DONE
  - Multiple frame outputs per run - configurable
  - Made plots square
  - Add "tolower" function on strings for file handling on Windows
+ - Added option to add grids of pos in XY for DM IC, same velocity.
+ - Define range of random IC for pos and vel for DM.
 
 TO DO
- - Define range of random initial position, vel for DM.
- - Define fixed grid for DM IC.
+ - Add timer to measure when the sim is done
+ - Add CPU threads to speed up force evaluation.
+ - Add source and sink regions (windtunnel features).
+ - Add note about maximum number of points.
+ - Implement CUDA accelerated integration.
  - Add density plot as option in frame generation.
  - Add path to use first order ODEs (e.g., RK4)
  - Add energy evaluation to show numerical stability.
  - Make movie viewer configurable
- - Compose frmes into one animation. 
+ - Compose multiple frame streams into one animation. 
  - Make animator frames follow a body.
  - Make animator frames orient to a axis (eg 3BP frame). [use a second body]
  - Have Animator sort out axes from input vector of point_types using indexes (eg can do y vs z)
