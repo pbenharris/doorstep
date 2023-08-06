@@ -17,6 +17,7 @@
 #include <list>
 #include <exception>
 #include <string>
+#include <limits>
 
 // C includes (where possible the C++ standard version)
 #include <cstdlib>
@@ -102,7 +103,11 @@ struct nbody_system_momentum
                acceleration = gravitational_constant * mass[i] * mass[j] * d / radius[j] / radius[j] / radius[j];
             }
             
-            diff *=  acceleration / d ; // Nice choice to reuse the difference variable for force
+            if (d > std::numeric_limits<double>::epsilon())
+               diff *= acceleration / d; // Nice choice to reuse the difference variable for force
+            else
+               diff = 0;
+
             dpdt[i] += diff;
             dpdt[j] -= diff;
          } // inner loop over combinations of points
@@ -110,19 +115,6 @@ struct nbody_system_momentum
    } // end parenthesis operator
 };
 
-point_type center_of_mass( const container_type &x , const scalar_type &m )
-{
-    const size_t n = x.size();
-    double overall_mass = 0.0;
-    point_type mean( 0.0 );
-    for( size_t i=0 ; i<n ; ++i )
-    {
-        overall_mass += m[i];
-        mean += m[i] * x[i];
-    }
-    if( !x.empty() ) mean /= overall_mass;
-    return mean;
-}
 
 // Defining a state type
 //typedef std::vector< double > state_type;
@@ -303,13 +295,18 @@ int main(int argc, char* argv[])
 
       BodyDistribution bd(rc, logger);
 
-      scalar_type mass = bd.getMass();
-      
       size_t n_body = bd.bodyCount();
-      //scalar_type mass (n_body, 0.);
-      scalar_type radius (n_body, 0.01);
-      scalar_type metric (n_body, 0.);
-      container_type p(n_body, 0.), q(n_body, 0.);
+
+      scalar_type mass2 (n_body, 0.);
+      scalar_type radius2 (n_body, 0.01);
+      container_type p2(n_body, 0.), q2(n_body, 0.);
+
+      scalar_type mass = bd.getMass();
+      scalar_type radius = bd.getRadius();      
+      container_type p = bd.getP();
+      container_type q = bd.getQ();
+
+      scalar_type metric(n_body, 0.);
 
       logger.info("Simulation configured for {} bodies", n_body);
       // Clean up output files for animations
@@ -332,6 +329,7 @@ int main(int argc, char* argv[])
       
       // Populate the initial state: mass and position
       //default_random_engine defEngine(time(0));
+      /*
       default_random_engine rEngine;
       uniform_real_distribution<double> initialDist(-4,4);
       size_t i;
@@ -363,6 +361,7 @@ int main(int argc, char* argv[])
             double scale = 1./100;
             p[i][0] = scale*(x_plus - x_minus);
             p[i][1] = scale*(y_plus - y_minus);
+
          }
       }
 
@@ -375,7 +374,7 @@ int main(int argc, char* argv[])
       }
 
       for( size_t i=0 ; i<n_body ; ++i ) p[i] *= mass[i];
-
+      */
       // Integration parameters
       double t0 = rc.initialTime;
       double t1 = rc.finalTime;

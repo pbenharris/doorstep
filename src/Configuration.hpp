@@ -27,6 +27,11 @@ namespace doorstep {
    struct RandomConfiguration
    {
       size_t number_bodies;
+      double particle_mass;
+      double min_x, max_x, min_y, max_y;
+      double radius;
+      double speed_sd;
+      point_type initial_position, initial_velocity;
    };
    
    struct ImageStream
@@ -206,17 +211,32 @@ namespace doorstep {
             } // end check for image streams
 
             // Random distributions of dark matter
-            if (jsonData.contains("random"))
+            if (jsonData.contains("uniform_2d_xy"))
             {
-               rc.randomConfig.resize(jsonData["random"].size());
+               rc.randomConfig.resize(jsonData["uniform_2d_xy"].size());
                for (size_t i=0; i< rc.randomConfig.size(); i++)
                {
+                  nlohmann::json jsonRC = jsonData["uniform_2d_xy"][i];
                   RandomConfiguration ranC;
-                  ranC.number_bodies = jsonData["random"][i]["number_bodies"];
+                  ranC.number_bodies = jsonRC["number_bodies"];
+                  ranC.particle_mass = jsonRC["particle_mass"];
+                  ranC.min_x = jsonRC["min_x"];
+                  ranC.max_x = jsonRC["max_x"];
+                  ranC.min_y = jsonRC["min_y"];
+                  ranC.max_y = jsonRC["max_y"];
+                  ranC.radius = jsonRC["radius"];
+                  ranC.speed_sd = jsonRC["speed_sd"];
+
+                  for (size_t j=0; j<ranC.initial_position.dim; j++)
+                  {
+		     ranC.initial_position[j] = jsonRC["initial_position"][j];                     
+		     ranC.initial_velocity[j] = jsonRC["initial_velocity"][j];                     
+		  }
 
                   rc.randomConfig[i] = ranC;
                }
             }
+
             // Use a grid to specify initial conditions
             if (jsonData.contains("grid"))
             {

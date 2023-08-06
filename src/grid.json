@@ -2,7 +2,7 @@
     "gravitational_constant" : 0.0000001,
     "initial_time"  : 0.0,
     "time_step"     : 1.0,
-    "final_time"    : 20.000,
+    "final_time"    : 5.000,
     "wind_tunnel_exit" : 4,
     "celestial_body" : [
         {
@@ -34,12 +34,14 @@
             "initial_velocity": [0.02, 0.0, 0.0]
         }
     ],
-    "random" : [
+    "uniform_2d_xy" : [
         {
-            "number_bodies": 1000,
+            "number_bodies": 2,
             "particle_mass": 1e-9,
-            "axis_min" : -4,
-            "axis_max" : 4,
+            "min_x" : -4,
+            "max_x" : 4,
+            "min_y" : -4,
+            "max_y" : 4,
             "radius" : 0.01,
             "speed_sd" : 0.05,
             "initial_position": [0.0, 0.0, 0.0],
@@ -48,8 +50,8 @@
      ],
     "grid" : [
         {
-            "particle_mass": 1e-9,
-            "n_x" : 10,
+            "particle_mass": 1e-8,
+            "n_x" : 2,
             "n_y" : 1,
             "n_z" : 1,
             "distance" : 0.1,

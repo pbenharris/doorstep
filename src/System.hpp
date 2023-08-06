@@ -151,3 +151,20 @@ class point :
 typedef point< double , 3 > point_type;
 typedef std::vector< point_type > container_type;
 typedef std::vector< double > scalar_type;
+
+namespace doorstep
+{
+   point_type center_of_mass( const container_type &x , const scalar_type &m )
+   {
+       const size_t n = x.size();
+       double overall_mass = 0.0;
+       point_type mean( 0.0 );
+       for( size_t i=0 ; i<n ; ++i )
+       {
+	   overall_mass += m[i];
+	   mean += m[i] * x[i];
+       }
+       if( !x.empty() ) mean /= overall_mass;
+       return mean;
+   }
+}
