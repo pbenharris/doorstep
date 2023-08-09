@@ -151,6 +151,7 @@ class point :
 typedef point< double , 3 > point_type;
 typedef std::vector< point_type > container_type;
 typedef std::vector< double > scalar_type;
+typedef std::vector< bool > mask_type;
 
 namespace doorstep
 {

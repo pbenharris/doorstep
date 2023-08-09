@@ -1,42 +1,50 @@
 {
     "gravitational_constant" : 0.0000001,
-    "number_bodies" : 4000,
     "initial_time"  : 0.0,
-    "time_step"     : 1.0,
-    "final_time"    : 1000.000,
-        "celestial_body" : [
+    "time_step"     : 1,
+    "final_time"    : 500.000,
+    "wind_tunnel_exit" : 4,
+    "celestial_body" : [
         {
             "name": "Earth",
             "radius": 0.5,
             "mass": 1000.0,
             "initial_position": [0.0, 0.0, 0.0],
             "initial_velocity": [0.0, 0.0, 0.0]
-        },
-        {
-            "name": "Moon",
-            "radius": 0.2,
-            "mass": 0.05,
-            "initial_position": [1.2, 0.0, 0.0],
-            "initial_velocity": [0.0, 0.010, 0.0]
         }
-
     ],
-
-    "animation" : {
-        "working_directory" : "animation",
-        "output_filename" : "windtunnel-1.webp",
-        "frame_outputs" : [
-            {
-                "type" : "2dplot",
-                "x_index" : 1,
-                "y_index" : 2,
-                "origin"  : [0, 0],
-                "length_scale" : 1,
-                "axis_min"  : -2,
-                "axis_max"  : 2,
-                "base_filename" : "frame",
-                "frame_number_digits" : 4
-           }
-        ]
-    }
+    "grid" : [
+        {
+            "particle_mass": 2.5e-4,
+            "n_x" : 10,
+            "n_y" : 10,
+            "n_z" : 1,
+            "distance" : 0.2,
+            "initial_position": [-2, 0.0, 0.0],
+            "initial_velocity": [0.02, 0.0, 0.0]        
+        }
+    ],
+    "image_stream" : [
+        {
+            "name" : "xyplot",
+            "type" : "2dplot",
+            "x_index" : 1,
+            "y_index" : 2,
+            "origin"  : [0, 0],
+            "length_scale" : 1,
+            "axis_min"  : -5,
+            "axis_max"  : 5,
+            "working_directory" : "animation",
+            "c_filespec" : "frame%04d.png",
+            "file_wildcard" : "frame*.png"
+        }
+    ],
+    "animation" : [
+        {
+            "working_directory" : "animation",
+            "output_filename" : "grid.webp",
+            "image_stream" : "xyplot",
+            "open_in_viewer" : true
+        }
+    ]
 }

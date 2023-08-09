@@ -66,14 +66,14 @@ struct nbody_system_momentum
 {
    const scalar_type &mass;
    const scalar_type &radius; // for calculating force within bodies
-   scalar_type &metric; // to debug detecting conditions (e.g., DM within bodies)
+   mask_type &active; // to debug detecting conditions (e.g., DM within bodies)
    double gravitational_constant;
 
    nbody_system_momentum( const scalar_type &inputMass,
                           const scalar_type &inputRadius,
-                          scalar_type &inputMetric,
+                          mask_type &inputActive,
                           double inputG ) :
-      mass(inputMass), radius(inputRadius), metric(inputMetric),
+      mass(inputMass), radius(inputRadius), active(inputActive),
       gravitational_constant (inputG)
    { }
 
@@ -82,22 +82,15 @@ struct nbody_system_momentum
       const size_t n = q.size();
       for( size_t i=0 ; i<n ; ++i )
       {
-         metric[i] =0.0;
+         active[i] = true;
          dpdt[i] = 0.0; // Ah, so dpdt is force. So, p is momentum.  
          for( size_t j=0 ; j<i ; ++j ) // The canonical form doesn't have velocity as a state variable, just positions/coordinates
          {
             point_type diff = q[j] - q[i];
             double d = abs( diff );
             double acceleration = gravitational_constant * mass[i] * mass[j] / d / d;
-            
-            //if (d<radius[i])
-            //   metric[i] = 1.0;
-            if (i==1)
-            {
-               if (radius[j] > d)
-                  metric[i] = 1.0;
-            }
 
+            // if active i and j...
             if (radius[j] > d)
             {
                acceleration = gravitational_constant * mass[i] * mass[j] * d / radius[j] / radius[j] / radius[j];
@@ -121,6 +114,8 @@ struct nbody_system_momentum
 };
 
 
+// relic from integrating with first order rk
+// Keep until first order rk is folded back in as an option
 // Defining a state type
 //typedef std::vector< double > state_type;
  
@@ -150,25 +145,26 @@ struct streaming_observer
    std::map<std::string, ImageStream> &imageStreamMap;
 
    scalar_type &radius; // for graphing. Body radius
-   scalar_type &metric; // for drawing conditions (e.g., inside another body)
+
 
    //mutable list<double> t_hist;
    //mutable list<state_type> x_hist;
 
    // Wind tunnel function
-   bool windtunnel; // Are we reusing points that have wandered outside the sim?
+   bool windtunnel; // Are we enforcing the wind tunenl
    double windTunnelExitDist; // A fixed distance in the scale beyond which a dm point is reused.
+   mask_type &active; // Outside windtunnel means inactive
    
-     streaming_observer( std::ostream &out,
+   streaming_observer( std::ostream &out,
                        std::map<std::string,ImageStream> &inputImageStreamMap,
                        bool inputUseWindtunnel, double inputWindtunnelExit,
                        //std::filesystem::path iOutPath,
                        //FrameOutputConfiguration& ifc,
                        //std::string iFramePattern,
-                       scalar_type &iRadius, scalar_type &iMetric,
+                       scalar_type &iRadius, mask_type &iActive,
                        size_t iNumberCelestialBodies) :
       m_out( out ), imageStreamMap(inputImageStreamMap), 
-      radius(iRadius), metric(iMetric),
+      radius(iRadius), active(iActive),
       numberCB(iNumberCelestialBodies),
       frameCount(inputImageStreamMap.size(),0),
       windtunnel(inputUseWindtunnel),
@@ -187,9 +183,32 @@ struct streaming_observer
       for( size_t i=0 ; i<x.size() ; ++i ) m_out << "\t" << x[i];
       m_out << "\n";
 
+      // Wind tunnel processing
+      // First tag those dm that left the windtunnel
+      size_t n_dm_total = x.size() - numberCB; // Total number of dm particles
+      size_t n_dm_active=0; // count of dm particles that are active
+      size_t n_dm_inactive; // count of dm particles that are inactive
+      if (windtunnel)
+      {
+         for( size_t i=0 ; i<x.size() ; ++i )
+         {
+            if (abs(x[i])>windTunnelExitDist)
+               active[i]=false;
+            else
+            {
+               if (i>=numberCB)
+               {
+                  active[i]=true;
+                  n_dm_active++;
+               }
+            }
+         }
+      }
+      n_dm_inactive = n_dm_total - n_dm_active;
+
       // Map coordinates from state into vectors for plotting
       size_t np = x.size();
-      vector<double> xc(np), yc(np);
+      vector<double> xc(np), yc(np); // c is for celestial body
       auto xc_iter = xc.begin();
       auto yc_iter = yc.begin();
 
@@ -223,24 +242,45 @@ struct streaming_observer
             
          // Draw the dark matter particles
          hold(on);
-         size_t n_dm = x.size() - numberCB;
-         vector<double> x_dm(n_dm), y_dm(n_dm);
-         for (size_t i=0; i<n_dm; i++)
+
+         vector<double> x_dm_a(n_dm_active), y_dm_a(n_dm_active); // X,Y for actives
+         vector<double> x_dm_i(n_dm_inactive), y_dm_i(n_dm_inactive); // X,Y for inactives
+         size_t idx_i=0; // counter into inactives
+         size_t idx_a=0; // counter into actives
+         // Loop to sort through active from inactive into two vectors
+         for (size_t i=0; i<n_dm_total; i++)
          {
-            x_dm[i] = x[i+numberCB][0] / length_scale;
-            y_dm[i] = x[i+numberCB][1] / length_scale;
+            if (active[i+numberCB])
+            {
+               x_dm_a[idx_a] = x[i+numberCB][0] / length_scale;
+               y_dm_a[idx_a++] = x[i+numberCB][1] / length_scale;
+            }
+            else
+            {
+               x_dm_i[idx_i] = x[i+numberCB][0] / length_scale;
+               y_dm_i[idx_i++] = x[i+numberCB][1] / length_scale;
+            }
          }
-         scatter(x_dm, y_dm, 2);
-  
+
+         // Plot actives
+         auto pa = scatter(x_dm_a, y_dm_a, 2.0);
+         pa->marker_color({0.0f, 0.5f, 0.5f});
+         pa->marker_face_color({0.f, 0.5f, 0.5f});
+
+         // Plot inactives
+         auto pi = scatter(x_dm_i, y_dm_i, 2.0);
+         pi->marker_color({1.0f, 0.0f, 0.0f});
+         pi->marker_face_color({1.0f, 0.0f, 0.0f});
+         
          // Time in title
          char timelabel[60];
          sprintf(timelabel,"t=%.2lf",t);
          title(timelabel);
 
-         // Output metric value in title
-         //char metricLabel[60];
-         //sprintf(metricLabel,"%g",metric[1]);
-         //title(metricLabel);
+         // Output active value in title
+         //char activeLabel[60];
+         //sprintf(activeLabel,"%g",active[1]);
+         //title(activeLabel);
 
          char fname[255];
          sprintf(fname,i->second.c_filespec.c_str(),frameCount[streamIndex++]++);
@@ -249,7 +289,7 @@ struct streaming_observer
          save(outputFramePath.generic_string());
       }
 
-      // Control function to kill and redistribute, a primitive "wind tunnel"
+      // Control function to kill and redistribute, a "wind tunnel"
       if (windtunnel)
          for (size_t i=numberCB; i<(n_dm+numberCB); i++)
          {
@@ -260,9 +300,9 @@ struct streaming_observer
             double disty = abs(x[i][1]);
             double distz = abs(x[i][2]);
 
-            if (distx > alimit) x[i][0]=-x[i][0];
-            if (disty > alimit) x[i][1]=-x[i][1];
-            if (distz > alimit) x[i][2]=-x[i][2];
+            if (distx > alimit) active[i]=false;
+            if (disty > alimit) active[i]=false;
+            if (distz > alimit) active[i]=false;
 
          } // end control function
    } // end operator()
@@ -311,7 +351,7 @@ int main(int argc, char* argv[])
       container_type p = bd.getP();
       container_type q = bd.getQ();
 
-      scalar_type metric(n_body, 0.);
+      mask_type active(n_body, true);
 
       logger.info("Simulation configured for {} bodies", n_body);
       // Clean up output files for animations
@@ -346,7 +386,7 @@ int main(int argc, char* argv[])
                             //rc.animationConfig.animationOutputPath,
                             //rc.animationConfig.frameOutputConfig[0],
                             //animation.getFrameCspec(),
-                            radius, metric,
+                            radius, active,
                             rc.celestialBody.size());
       
       //integrate_const( runge_kutta4<state_type>(), my_system, x0, t0, t1, dt, so );
@@ -358,7 +398,7 @@ int main(int argc, char* argv[])
           make_pair(nbody_system_coor(mass),
                     nbody_system_momentum(mass,
                                           radius,
-                                          metric,
+                                          active,
                                           rc.gravitationalConstant) ), // System
           make_pair( boost::ref( q ), boost::ref( p ) ), // i.c.
           t0, t1, dt, boost::ref(so)
