@@ -92,7 +92,7 @@ namespace doorstep {
    class ConfigurationFile
    {
       public:
-         ConfigurationFile(const std::string& configFilename, spdlog::logger& mlogger)
+         ConfigurationFile(const std::string& configFilename, spdlog::logger& mlogger) : logger(mlogger)
          {
             // Logic to find the configuration file
             // First place it is found is used. Which is found is logged.
@@ -113,13 +113,13 @@ namespace doorstep {
                {
                   foundConfig = true;
                   configPathUsing = *it;
-                  mlogger.debug("Found configuration file {}",(*it).generic_string().c_str());
+                  logger.debug("Found configuration file {}",(*it).generic_string().c_str());
                }
             }
 
             if (!foundConfig)
             {
-               mlogger.error("Cannot find a configuration file {}",
+               logger.error("Cannot find a configuration file {}",
                             configFilename.c_str() );
                throw(std::runtime_error("Cannot open configuration file"+
                                          configFilename));
@@ -127,8 +127,8 @@ namespace doorstep {
 
             std::ifstream configFile(configPathUsing.generic_string());
             jsonData = nlohmann::json::parse(configFile);     
-            mlogger.info("Read configuration from {}",
-                         configPathUsing.generic_string().c_str());
+            logger.info("Read configuration from {}",
+                        configPathUsing.generic_string().c_str());
          }
 
          RunConfiguration getRunConfiguration(void) const
@@ -259,6 +259,14 @@ namespace doorstep {
                   gc.ic_vz    = gcjo["initial_velocity"][2];
 
                   rc.gridConfig[i]=gc;
+
+                  if (rc.useWindTunnel)
+                  {
+                     double v_mag = std::sqrt(gc.ic_vx*gc.ic_vx + gc.ic_vy*gc.ic_vy + gc.ic_vz*gc.ic_vz);
+                     double delta_t_e = gc.distance / v_mag;
+                     double m =   delta_t_e / rc.timeStep;
+                     logger.info("Grid {} windtunnel entry time rate t_e is {}, ratio t_e/t_s is {}.", i, delta_t_e, m);
+                  }
                }
             }
             return rc;
@@ -266,6 +274,8 @@ namespace doorstep {
 
    private:
       nlohmann::json jsonData;
+      spdlog::logger& logger;
+      
    }; // end class ConfigurationFile
 
 } // end namespace doorstep

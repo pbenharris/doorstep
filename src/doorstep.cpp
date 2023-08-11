@@ -82,28 +82,32 @@ struct nbody_system_momentum
       const size_t n = q.size();
       for( size_t i=0 ; i<n ; ++i )
       {
-         active[i] = true;
-         dpdt[i] = 0.0; // Ah, so dpdt is force. So, p is momentum.  
-         for( size_t j=0 ; j<i ; ++j ) // The canonical form doesn't have velocity as a state variable, just positions/coordinates
+         if (active[i]) // begin if body i is active
          {
-            point_type diff = q[j] - q[i];
-            double d = abs( diff );
-            double acceleration = gravitational_constant * mass[i] * mass[j] / d / d;
-
-            // if active i and j...
-            if (radius[j] > d)
+            dpdt[i] = 0.0; // Ah, so dpdt is force. So, p is momentum.  
+            for( size_t j=0 ; j<i ; ++j ) // The canonical form doesn't have velocity as a state variable, just positions/coordinates
             {
-               acceleration = gravitational_constant * mass[i] * mass[j] * d / radius[j] / radius[j] / radius[j];
-            }
-            
-            if (d > std::numeric_limits<double>::epsilon())
-               diff *= acceleration / d; // Nice choice to reuse the difference variable for force
-            else
-               diff = 0;
+               if (active[j]) // begin if body j is active
+               {
+                  point_type diff = q[j] - q[i];
+                  double d = abs( diff );
+                  double acceleration = gravitational_constant * mass[i] * mass[j] / d / d;
 
-            dpdt[i] += diff;
-            dpdt[j] -= diff;
-         } // inner loop over combinations of points
+                  if (radius[j] > d)
+                  {
+                     acceleration = gravitational_constant * mass[i] * mass[j] * d / radius[j] / radius[j] / radius[j];
+                  }
+
+                  if (d > std::numeric_limits<double>::epsilon())
+                     diff *= acceleration / d; // Nice choice to reuse the difference variable for force
+                  else
+                     diff = 0;
+
+                  dpdt[i] += diff;
+                  dpdt[j] -= diff;
+               } // end if body j is active
+            } // inner loop over combinations of points
+         } // end if body i is active
       } // outer loop over combinatios of points
    } // End simple function to loop through all points
 
@@ -263,14 +267,20 @@ struct streaming_observer
          }
 
          // Plot actives
-         auto pa = scatter(x_dm_a, y_dm_a, 2.0);
-         pa->marker_color({0.0f, 0.5f, 0.5f});
-         pa->marker_face_color({0.f, 0.5f, 0.5f});
+         if (x_dm_a.size()>0) // prevents warnings when all dm are inactive
+         {
+            auto pa = scatter(x_dm_a, y_dm_a, 2.0);
+            pa->marker_color({0.0f, 0.5f, 0.5f});
+            pa->marker_face_color({0.f, 0.5f, 0.5f});
+         }
 
          // Plot inactives
-         auto pi = scatter(x_dm_i, y_dm_i, 2.0);
-         pi->marker_color({1.0f, 0.0f, 0.0f});
-         pi->marker_face_color({1.0f, 0.0f, 0.0f});
+         if (x_dm_i.size()>0) // prevents warning when all dm are active
+         {
+            auto pi = scatter(x_dm_i, y_dm_i, 2.0);
+            pi->marker_color({1.0f, 0.0f, 0.0f});
+            pi->marker_face_color({1.0f, 0.0f, 0.0f});
+         }
          
          // Time in title
          char timelabel[60];
@@ -341,10 +351,6 @@ int main(int argc, char* argv[])
       BodyDistribution bd(rc, logger);
 
       size_t n_body = bd.bodyCount();
-
-      scalar_type mass2 (n_body, 0.);
-      scalar_type radius2 (n_body, 0.01);
-      container_type p2(n_body, 0.), q2(n_body, 0.);
 
       scalar_type mass = bd.getMass();
       scalar_type radius = bd.getRadius();      
