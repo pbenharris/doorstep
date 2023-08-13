@@ -17,28 +17,48 @@ namespace doorstep
       BodyDistribution(const RunConfiguration& rc, spdlog::logger& mlogger) :
          logger (mlogger)
       {
-         numberBodies = rc.celestialBody.size();
+
+         // Calculate the minimum number of bodies
+         size_t minNumberBodies = rc.celestialBody.size();
 
          // Add count for random groups,
-         // Set their properties
          for (auto it = rc.randomConfig.begin();
               it!=rc.randomConfig.end();
               it++)
          { 
-            numberBodies += it->number_bodies;
+            minNumberBodies += it->number_bodies;
          }
-
+         
          // Add count of bodies for grids
          for (auto it = rc.gridConfig.begin();
               it!=rc.gridConfig.end();
               it++)
          {
             size_t gridSize = it->nx * it->ny * it->nz;
-            numberBodies += gridSize;
+            minNumberBodies += gridSize;
          }
+         
+         if (rc.useWindTunnel) // Here the user to set the max # bodies
+         {
+            numberBodies = rc.maximumBodies;
+            if ((rc.useWindTunnel)&&(rc.maximumBodies < minNumberBodies))
+            {
+               numberBodies = minNumberBodies;
+               mlogger.warn("Number of bodies raised from {} to {}",rc.maximumBodies,minNumberBodies);
+            }
+         }
+         else // We set the number of bodies to the minimum
+         {
+            numberBodies = minNumberBodies;
+         }  
 
          mass = scalar_type(numberBodies, 1e-10);
          radius = scalar_type(numberBodies, 1e-10);
+         
+         // This has to be set to true for a body to exert gravitational force
+         // Those values are set with initial condition (position, velocity)
+         // in the set.... functions later.
+         active = mask_type(numberBodies, false); 
 
          // Next set up distributions for p, q
          p = container_type(numberBodies, 0.0);
@@ -50,6 +70,7 @@ namespace doorstep
          lastIdx = setRandomClouds(rc, lastIdx);
          lastIdx = setGrids(rc, lastIdx);
 
+         /*
          // Set the mean q and p to zero
          point_type pmean = center_of_mass(p, mass);
          point_type qmean = center_of_mass(q , mass );
@@ -58,14 +79,10 @@ namespace doorstep
             q[i] -= qmean;
             p[i] -= pmean;
          }
-
+         */
+         
          // Finally adjust p to be momentum
          for( size_t i=0 ; i<numberBodies ; ++i ) p[i] *= mass[i];
-      }
-
-      size_t bodyCount(void) const
-      {
-         return numberBodies;
       }
 
       scalar_type getMass(void) const
@@ -88,6 +105,11 @@ namespace doorstep
 	 return q;
       }
 
+      mask_type getActive(void) const
+      {
+         return active;
+      }
+
    private:
 
       // Set up each CelestialBody
@@ -97,6 +119,7 @@ namespace doorstep
               cfg!=rc.celestialBody.end(); cfg++, idx++)
          {
             mass[idx]   = cfg->mass;
+            active[idx] = true;
             radius[idx] = cfg->radius;
    
             for (size_t j=0;j<cfg->position.size();j++)
@@ -134,6 +157,7 @@ namespace doorstep
             {
                double thisMass = cfg->particle_mass;
                mass[idx] = thisMass;
+               active[idx] = true;
 
                // Random distribution for velocity
                double theta = thetaDist(rEngine);
@@ -172,6 +196,7 @@ namespace doorstep
                   for (int iz=0; iz!=cfg->nz; iz++, idx++)
                   {
                      mass[idx] = cfg->mass;
+                     active[idx]=true;
                      
                      point_type pos;
                      pos[0] = minx + d*ix;
@@ -195,6 +220,8 @@ namespace doorstep
 
       container_type p;
       container_type q;
+
+      mask_type active;
       
       spdlog::logger& logger;
       size_t numberBodies;

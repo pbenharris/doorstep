@@ -39,6 +39,7 @@
 #include "Animation.hpp"
 #include "Configuration.hpp"
 #include "BodyDistribution.hpp"
+#include "WindTunnel.hpp"
 
 using namespace std;
 using namespace boost::numeric::odeint;
@@ -150,18 +151,19 @@ struct streaming_observer
 
    scalar_type &radius; // for graphing. Body radius
 
-
    //mutable list<double> t_hist;
    //mutable list<state_type> x_hist;
-
    // Wind tunnel function
-   bool windtunnel; // Are we enforcing the wind tunenl
-   double windTunnelExitDist; // A fixed distance in the scale beyond which a dm point is reused.
+
+   bool windtunnelFlag;
+   WindTunnel& windtunnel;
+   
    mask_type &active; // Outside windtunnel means inactive
    
    streaming_observer( std::ostream &out,
                        std::map<std::string,ImageStream> &inputImageStreamMap,
-                       bool inputUseWindtunnel, double inputWindtunnelExit,
+                       bool inputUseWindtunnel,
+                       WindTunnel& inputWindtunnel,
                        //std::filesystem::path iOutPath,
                        //FrameOutputConfiguration& ifc,
                        //std::string iFramePattern,
@@ -171,8 +173,8 @@ struct streaming_observer
       radius(iRadius), active(iActive),
       numberCB(iNumberCelestialBodies),
       frameCount(inputImageStreamMap.size(),0),
-      windtunnel(inputUseWindtunnel),
-      windTunnelExitDist(inputWindtunnelExit)      
+      windtunnelFlag(inputUseWindtunnel),
+      windtunnel(inputWindtunnel)
    {
    }
 
@@ -189,32 +191,28 @@ struct streaming_observer
 
       // Wind tunnel processing
       // First tag those dm that left the windtunnel
-      size_t n_dm_total = x.size() - numberCB; // Total number of dm particles
       size_t n_dm_active=0; // count of dm particles that are active
-      size_t n_dm_inactive; // count of dm particles that are inactive
-      if (windtunnel)
+      size_t n_dm_inactive=0; // count of dm particles that are inactive
+      if (windtunnelFlag) // windtunnel processing
       {
-         for( size_t i=0 ; i<x.size() ; ++i )
+         // Exit processing and counting numbers of active and inactive
+         windtunnel.detectExits();
+         for( size_t i=numberCB ; i<x.size() ; ++i )
          {
-            if (abs(x[i])>windTunnelExitDist)
-               active[i]=false;
+            if (active[i])
+               n_dm_active++;
             else
-            {
-               if (i>=numberCB)
-               {
-                  active[i]=true;
-                  n_dm_active++;
-               }
-            }
+               n_dm_inactive++;
          }
       }
-      n_dm_inactive = n_dm_total - n_dm_active;
-
+      else // If there is no windtunnel - all dm are active
+      {
+         n_dm_active = x.size()-numberCB;
+         n_dm_inactive = 0;
+      }
+      
       // Map coordinates from state into vectors for plotting
-      size_t np = x.size();
-      vector<double> xc(np), yc(np); // c is for celestial body
-      auto xc_iter = xc.begin();
-      auto yc_iter = yc.begin();
+      vector<double> xc(numberCB), yc(numberCB); // c is for celestial body
 
       // Output each stream
       int streamIndex = 0;
@@ -240,44 +238,57 @@ struct streaming_observer
                            yc[i]-thisRadius,
                            2*thisRadius,
                           2*thisRadius);
-            e->fill("green");
-            e->color("green");
+            //e->fill("green");
+            if (active[i])
+               e->marker_color("black");
+            else
+               e->marker_color("red");
          }
             
          // Draw the dark matter particles
          hold(on);
 
          vector<double> x_dm_a(n_dm_active), y_dm_a(n_dm_active); // X,Y for actives
-         vector<double> x_dm_i(n_dm_inactive), y_dm_i(n_dm_inactive); // X,Y for inactives
+         vector<double> x_dm_i, y_dm_i; // X,Y for inactives
          size_t idx_i=0; // counter into inactives
          size_t idx_a=0; // counter into actives
          // Loop to sort through active from inactive into two vectors
-         for (size_t i=0; i<n_dm_total; i++)
+         size_t np = x.size();
+         for (size_t i=numberCB; i<np; i++)
          {
-            if (active[i+numberCB])
+            if (active[i])
             {
-               x_dm_a[idx_a] = x[i+numberCB][0] / length_scale;
-               y_dm_a[idx_a++] = x[i+numberCB][1] / length_scale;
+               x_dm_a[idx_a] = x[i][0] / length_scale;
+               y_dm_a[idx_a++] = x[i][1] / length_scale;
             }
             else
             {
-               x_dm_i[idx_i] = x[i+numberCB][0] / length_scale;
-               y_dm_i[idx_i++] = x[i+numberCB][1] / length_scale;
+               // Exclude inactives parked at the origin
+               if ((std::fabs(x[i][0])>std::numeric_limits<double>::epsilon()) &&
+                   (std::fabs(x[i][1])>std::numeric_limits<double>::epsilon())) 
+                   {
+                      x_dm_i.push_back(x[i][0] / length_scale);
+                      y_dm_i.push_back(x[i][1] / length_scale);
+                      //x_dm_i[idx_i] = x[i][0] / length_scale;
+                      //y_dm_i[idx_i++] = x[i][1] / length_scale;
+                   }
             }
          }
 
          // Plot actives
          if (x_dm_a.size()>0) // prevents warnings when all dm are inactive
          {
-            auto pa = scatter(x_dm_a, y_dm_a, 2.0);
-            pa->marker_color({0.0f, 0.5f, 0.5f});
-            pa->marker_face_color({0.f, 0.5f, 0.5f});
+            auto pa = scatter(x_dm_a, y_dm_a, 1.0);
+            //binscatter(x_dm_a, y_dm_a, bin_scatter_style::heatmap);
+            //binscatter(x_dm_a, y_dm_a, bin_scatter_style::point_colormap);
+            pa->marker_color({0.0f, 0.0f, 0.0f});
+            pa->marker_face_color({0.f, 0.0f, 0.0f});
          }
 
          // Plot inactives
          if (x_dm_i.size()>0) // prevents warning when all dm are active
          {
-            auto pi = scatter(x_dm_i, y_dm_i, 2.0);
+            auto pi = scatter(x_dm_i, y_dm_i, 1.0);
             pi->marker_color({1.0f, 0.0f, 0.0f});
             pi->marker_face_color({1.0f, 0.0f, 0.0f});
          }
@@ -299,22 +310,6 @@ struct streaming_observer
          save(outputFramePath.generic_string());
       }
 
-      // Control function to kill and redistribute, a "wind tunnel"
-      if (windtunnel)
-         for (size_t i=numberCB; i<(n_dm+numberCB); i++)
-         {
-            double alimit = windTunnelExitDist;
-
-            // Check for distance from origin
-            double distx = abs(x[i][0]);
-            double disty = abs(x[i][1]);
-            double distz = abs(x[i][2]);
-
-            if (distx > alimit) active[i]=false;
-            if (disty > alimit) active[i]=false;
-            if (distz > alimit) active[i]=false;
-
-         } // end control function
    } // end operator()
     
 };
@@ -350,16 +345,13 @@ int main(int argc, char* argv[])
 
       BodyDistribution bd(rc, logger);
 
-      size_t n_body = bd.bodyCount();
-
       scalar_type mass = bd.getMass();
       scalar_type radius = bd.getRadius();      
       container_type p = bd.getP();
       container_type q = bd.getQ();
 
-      mask_type active(n_body, true);
+      mask_type active = bd.getActive();
 
-      logger.info("Simulation configured for {} bodies", n_body);
       // Clean up output files for animations
       for (auto it = rc.animationConfig.begin();
            it != rc.animationConfig.end();
@@ -384,11 +376,25 @@ int main(int argc, char* argv[])
 
       ofstream stateHistFile("state_hist.txt");
 
-      // Run integrator      
+      // Run integrator
+      WindTunnel windtunnel(p,q,mass,active);
+
+      if (rc.useWindTunnel)
+      {
+         windtunnel.setExitAsDistance(rc.windTunnelExit);
+         logger.info("Windtunnel configured with exit distance {}.",
+                     rc.windTunnelExit);
+      }
+      else
+      {
+         logger.info("No windtunnel feature configured.");
+         logger.info("Number of bodies is {}.",mass.size());
+      }
+      
       streaming_observer so(stateHistFile,
                             rc.imageStreamMap,
                             rc.useWindTunnel,
-                            rc.windTunnelExit,
+                            windtunnel,
                             //rc.animationConfig.animationOutputPath,
                             //rc.animationConfig.frameOutputConfig[0],
                             //animation.getFrameCspec(),
@@ -399,6 +405,7 @@ int main(int argc, char* argv[])
       typedef symplectic_rkn_sb3a_mclachlan< container_type > stepper_type;
       //typedef runge_kutta4< container_type > stepper_type;
 
+      logger.info("Simulation start.");
       integrate_const (
           stepper_type(),
           make_pair(nbody_system_coor(mass),
@@ -409,7 +416,8 @@ int main(int argc, char* argv[])
           make_pair( boost::ref( q ), boost::ref( p ) ), // i.c.
           t0, t1, dt, boost::ref(so)
           );
-
+      logger.info("Simulation completed.");
+      
       for (auto i=0; i<rc.animationConfig.size(); i++)
       {
          // Don't trust the stream is correct - check for input error
@@ -425,8 +433,13 @@ int main(int argc, char* argv[])
                              iter->second);
          logger.info("Animation output format {}",animation.getFormatDescription().c_str());
          animation.generate();
+         logger.info("Animation generated.");
+         
          if (animation.openViewer)
+         {
+            logger.info("Launching viewer for animation.");
             animation.show();
+         }
       }
    }
    catch (const spdlog::spdlog_ex &ex)

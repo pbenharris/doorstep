@@ -33,3 +33,5 @@ TO DO
  - Make animator frames follow a body.
  - Make animator frames orient to a axis (eg 3BP frame). [use a second body]
  - Have Animator sort out axes from input vector of point_types using indexes (eg can do y vs z)
+ - Redirect output from shelled programs to files that won't overwrite
+   with each run.

@@ -96,17 +96,22 @@ namespace doorstep
             std::filesystem::path inputPath = frameInputDir / frameCspec;
             std::filesystem::path outputPath = animationOutputPath / outputFilename;
 
+
             if (format == Format::WEBP)
             {
+               std::filesystem::path errStream = animationOutputPath / "ffmpeg.out";
                command = "ffmpeg -i " + inputPath.generic_string() +
-                         " -vcodec libwebp -lossless 1 -loop 0 " +
-                         outputPath.generic_string();
+                         " -vcodec libwebp -lossless 1 -loop 0 " 
+                         + outputPath.generic_string()
+                         + " 2>" + errStream.generic_string();
             }
 
             if (format == Format::AVIMPG4)
             {
+               std::filesystem::path errStream = animationOutputPath / "ffmpeg.out";
                command = "ffmpeg -i " + inputPath.generic_string() +
-                         " -vcodec mpeg4 -b:v 2M " + outputPath.generic_string();
+                         " -vcodec mpeg4 -b:v 2M " + outputPath.generic_string()
+                         + " 2>" + errStream.generic_string();
             }
 
             if (format == Format::GIF)
@@ -140,7 +145,8 @@ namespace doorstep
 		  command = "vlc " + animationPath.generic_string();
 
 	       if (format == Format::WEBP)
-		  command = "firefox " + animationPath.generic_string();
+		  command = "firefox " + animationPath.generic_string()
+                            + " >firefox.stdout 2>firefox.stderr";
 
 	       return system(command.c_str());
 	    #endif          
