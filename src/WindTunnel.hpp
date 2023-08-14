@@ -83,10 +83,10 @@ namespace doorstep
             double maxy = gc->ic_y + 0.5*d*(gc->ny - 1);
             double maxz = gc->ic_z + 0.5*d*(gc->nz - 1);
 
-            point_type thisq;
-            thisq[0] = gc->mass * gc->ic_vx;
-            thisq[1]  = gc->mass * gc->ic_vy;
-            thisq[2]  = gc->mass * gc->ic_vz;
+            point_type thisp;
+            thisp[0] = gc->mass * gc->ic_vx;
+            thisp[1]  = gc->mass * gc->ic_vy;
+            thisp[2]  = gc->mass * gc->ic_vz;
             
             // East bound
             if (std::fabs(theta)<2*std::numeric_limits<double>::epsilon())
@@ -99,8 +99,8 @@ namespace doorstep
                   x[1] = miny + d*i;
                   x[2] = 0;
 
-                  gridEntryP.push_back(x);
-                  gridEntryQ.push_back(thisq);
+                  gridEntryQ.push_back(x);
+                  gridEntryP.push_back(thisp);
                   gridEntryMass.push_back(gc->mass);
                   
                   nextEntryTime.push_back(delta_t_e);
