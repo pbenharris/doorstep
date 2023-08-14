@@ -163,8 +163,8 @@ namespace doorstep
             }
          }
 
-         if (entered)
-            logger.info("Particles entering at time {}.",t);
+         //if (entered)
+         //   logger.info("Particles entering at time {}.",t);
       }
       
    private:
