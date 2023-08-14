@@ -46,6 +46,10 @@ namespace doorstep
                numberBodies = minNumberBodies;
                mlogger.warn("Number of bodies raised from {} to {}",rc.maximumBodies,minNumberBodies);
             }
+            else
+            {
+               mlogger.info("Maximum number of bodies set to {}.",numberBodies);
+            }
          }
          else // We set the number of bodies to the minimum
          {

@@ -196,7 +196,9 @@ struct streaming_observer
       if (windtunnelFlag) // windtunnel processing
       {
          // Exit processing and counting numbers of active and inactive
-         windtunnel.detectExits();
+         windtunnel.exitParticles();
+         windtunnel.enterParticles(t);
+         
          for( size_t i=numberCB ; i<x.size() ; ++i )
          {
             if (active[i])
@@ -377,13 +379,15 @@ int main(int argc, char* argv[])
       ofstream stateHistFile("state_hist.txt");
 
       // Run integrator
-      WindTunnel windtunnel(p,q,mass,active);
+      WindTunnel windtunnel(p,q,mass,active,logger);
 
       if (rc.useWindTunnel)
       {
          windtunnel.setExitAsDistance(rc.windTunnelExit);
          logger.info("Windtunnel configured with exit distance {}.",
                      rc.windTunnelExit);
+         if (rc.useGridEntries)
+            windtunnel.setEntry(rc.gridConfig);
       }
       else
       {
@@ -417,6 +421,12 @@ int main(int argc, char* argv[])
           t0, t1, dt, boost::ref(so)
           );
       logger.info("Simulation completed.");
+
+      if (rc.useWindTunnel)
+      {
+         logger.info("Inactive particle minimum {}, maximum {}.",
+                     windtunnel.getMinInactive(), windtunnel.getMaxInactive());
+      }
       
       for (auto i=0; i<rc.animationConfig.size(); i++)
       {

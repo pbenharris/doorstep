@@ -2,11 +2,12 @@
     "gravitational_constant" : 0.0000001,
     "initial_time"  : 0.0,
     "time_step"     : 1,
-    "final_time"    : 50.000,
+    "final_time"    : 400.000,
     "wind_tunnel" :
        {
-          "exit_distance" : 6,
-          "maximum_bodies" : 10        
+           "exit_distance" : 5,
+           "maximum_bodies" : 10,
+           "grid_entries" : true
        },
     "celestial_body" : [
         {
@@ -25,7 +26,7 @@
             "n_z" : 1,
             "distance" : 1,
             "initial_position": [-3.5, 0.0, 0.0],
-            "initial_velocity": [0.02, 0.0, 0.0]        
+            "initial_velocity": [0.02, 0.0, 0.0]
         }
     ],
     "image_stream" : [

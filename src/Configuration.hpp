@@ -81,7 +81,9 @@ namespace doorstep {
       double finalTime;
       double timeStep;
       bool useWindTunnel;
+      bool useGridEntries;
       double windTunnelExit;
+      size_t maximumBodies;
       std::vector<CelestialBody> celestialBody;
       std::vector<GridConfiguration> gridConfig;
       std::vector<RandomConfiguration> randomConfig;
@@ -141,16 +143,20 @@ namespace doorstep {
             rc.finalTime = jsonData["final_time"].template get<double>();
             rc.timeStep = jsonData["time_step"].template get<double>();
 
-            // Optional use of wind tunnel
-            if (jsonData.contains("wind_tunnel_exit"))
+            // Optional use of wind tunnel_exit
+            if (jsonData.contains("wind_tunnel"))
             {
                rc.useWindTunnel = true;
-               rc.windTunnelExit = jsonData["wind_tunnel_exit"];
+               rc.windTunnelExit = jsonData["wind_tunnel"]["exit_distance"];
+               rc.maximumBodies =  jsonData["wind_tunnel"]["maximum_bodies"];
+               rc.useGridEntries = jsonData["wind_tunnel"]["grid_entries"];
             }
             else
             {
                rc.useWindTunnel = false;
+               rc.useGridEntries = false;
                rc.windTunnelExit = 0.0;
+               rc.maximumBodies  = 0;
             }
                     
             // Optional configuration to define celestial bodies
@@ -259,16 +265,8 @@ namespace doorstep {
                   gc.ic_vz    = gcjo["initial_velocity"][2];
 
                   rc.gridConfig[i]=gc;
-
-                  if (rc.useWindTunnel)
-                  {
-                     double v_mag = std::sqrt(gc.ic_vx*gc.ic_vx + gc.ic_vy*gc.ic_vy + gc.ic_vz*gc.ic_vz);
-                     double delta_t_e = gc.distance / v_mag;
-                     double m =   delta_t_e / rc.timeStep;
-                     logger.info("Grid {} windtunnel entry time rate t_e is {}, ratio t_e/t_s is {}.", i, delta_t_e, m);
-                  }
-               }
-            }
+               }               
+             }
             return rc;
          }
 
