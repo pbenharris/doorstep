@@ -2,11 +2,11 @@
     "gravitational_constant" : 0.0000001,
     "initial_time"  : 0.0,
     "time_step"     : 1,
-    "final_time"    : 400.000,
+    "final_time"    : 4000.000,
     "wind_tunnel" :
        {
-           "exit_distance" : 5,
-           "maximum_bodies" : 10,
+           "exit_distance" : 6,
+           "maximum_bodies" : 20000,
            "grid_entries" : true
        },
     "celestial_body" : [
@@ -21,11 +21,11 @@
     "grid" : [
         {
             "particle_mass": 2.5e-4,
-            "n_x" : 2,
-            "n_y" : 2,
+            "n_x" : 1,
+            "n_y" : 80,
             "n_z" : 1,
-            "distance" : 1,
-            "initial_position": [-3.5, 0.0, 0.0],
+            "distance" : 0.1,
+            "initial_position": [-4, 0.0, 0.0],
             "initial_velocity": [0.02, 0.0, 0.0]
         }
     ],
@@ -37,8 +37,8 @@
             "y_index" : 2,
             "origin"  : [0, 0],
             "length_scale" : 1,
-            "axis_min"  : -5,
-            "axis_max"  : 5,
+            "axis_min"  : -3,
+            "axis_max"  : 3,
             "working_directory" : "animation",
             "c_filespec" : "frame%04d.png",
             "file_wildcard" : "frame*.png"

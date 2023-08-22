@@ -376,7 +376,7 @@ int main(int argc, char* argv[])
       double t1 = rc.finalTime;
       double dt = rc.timeStep;
 
-      ofstream stateHistFile("state_hist.txt");
+      ofstream stateHistFile(rc.stateHistoryFilename);
 
       // Run integrator
       WindTunnel windtunnel(p,q,mass,active,logger);

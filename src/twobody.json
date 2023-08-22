@@ -1,43 +1,64 @@
 {
-    "gravitational_constant" : 6.6743e-11,
-    "number_bodies" : 2,
-    "initial_time"  : 0.0,
-    "time_step"     : 120,
-    "final_time"    : 21348.5,
+    "gravitational_constant" : 1,
+    "initial_time"    : 0.0,
+    "time_step"       : 0.05,
+    "final_time"      : 600.000,
+    "state_filename"  : "two_body_caustic.txt",
+    "wind_tunnel" :
+       {
+           "exit_distance" : 14,
+           "maximum_bodies" : 20000,
+           "grid_entries" : true
+       },
     "celestial_body" : [
         {
-            "name": "Earth",
-            "radius": 6378145,
-            "mass": 5.972e24,
-            "initial_position": [0.0, 0.0, 0.0],
-            "initial_velocity": [0.0, 0.0, 0.0]
+            "name": "Body_1",
+            "radius": 0.5,
+            "mass": 0.5,
+            "initial_position": [0.0, 2.0, 0.0],
+            "initial_velocity": [-0.25, 0.0, 0.0]
         },
         {
-            "name": "DM",
-            "radius": 200000,
-            "mass": 1e-6,
-            "initial_position": [14378145, 0, 0],
-            "initial_velocity": [0, 5265.22, 0]
+            "name": "Body_2",
+            "radius": 0.5,
+            "mass": 0.5,
+            "initial_position": [0.0, -2.0, 0.0],
+            "initial_velocity": [0.25, 0.0, 0.0]
+        }
+
+    ],
+    "grid" : [
+        {
+            "particle_mass": 1e-7,
+            "n_x" : 1,
+            "n_y" : 100,
+            "n_z" : 1,
+            "distance" : 0.2,
+            "initial_position": [-7, 0.0, 0.0],
+            "initial_velocity": [0.4, 0.0, 0.0]
         }
     ],
-    "animation" : {
-        "working_directory" : {
-            "auto_relative_to_home" : true,
-            "directory_name" : "animation"
-        },
-        "frames" : [
-            {
-                "type" : "2dplot",
-                "x_index" : 1,
-                "y_index" : 2,
-                "origin"  : [0, 0],
-                "scale_reduction" : 6378145,
-                "x_limits"  : [-6, 6],
-                "y_limits"  : [-6, 6],
-                "base_filename" : "frame",
-                "frame_number_digits" : 4
-           }
-        ],
-        "output_filename" : "movie.gif"
-    }
+    "image_stream" : [
+        {
+            "name" : "tbxyplot",
+            "type" : "2dplot",
+            "x_index" : 1,
+            "y_index" : 2,
+            "origin"  : [0, 0],
+            "length_scale" : 1,
+            "axis_min"  : -5,
+            "axis_max"  : 5,
+            "working_directory" : "animation",
+            "c_filespec" : "tbframe%04d.png",
+            "file_wildcard" : "tbframe*.png"
+        }
+    ],
+    "animation" : [
+        {
+            "working_directory" : "animation",
+            "output_filename" : "twobody-caustics.webp",
+            "image_stream" : "tbxyplot",
+            "open_in_viewer" : true
+        }
+    ]
 }

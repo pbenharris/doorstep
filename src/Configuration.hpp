@@ -80,6 +80,7 @@ namespace doorstep {
       double initialTime;
       double finalTime;
       double timeStep;
+      std::string stateHistoryFilename; 
       bool useWindTunnel;
       bool useGridEntries;
       double windTunnelExit;
@@ -142,6 +143,7 @@ namespace doorstep {
             rc.initialTime = jsonData["initial_time"].template get<double>();
             rc.finalTime = jsonData["final_time"].template get<double>();
             rc.timeStep = jsonData["time_step"].template get<double>();
+            rc.stateHistoryFilename = jsonData["state_filename"];
 
             // Optional use of wind tunnel_exit
             if (jsonData.contains("wind_tunnel"))

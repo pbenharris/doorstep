@@ -70,6 +70,7 @@ namespace doorstep
 
             double v_mag = std::sqrt(gc->ic_vx*gc->ic_vx + gc->ic_vy*gc->ic_vy + gc->ic_vz*gc->ic_vz);
             double delta_t_e = gc->distance / v_mag;
+            logger.info("Grid distance {}, velocity {}", gc->distance, v_mag);
             logger.info("Grid {} windtunnel entry time rate t_e is {}", g_count, delta_t_e);
             
             double theta = std::atan2(gc->ic_vy, gc->ic_vx);
